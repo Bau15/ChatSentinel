@@ -13,7 +13,7 @@ jobs:
         java: [17, 11, 8]
       fail-fast: true
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3.3.0
       - name: Install Java ${{ matrix.java }}
         uses: actions/setup-java@v2
         with:
@@ -24,7 +24,7 @@ jobs:
       - name: build
         run: mvn clean install
       - name: Upload a Build Artifact
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v3.1.2
         with:
           name: ChatSentinel${{ matrix.java }}
           path: target/ChatSentinel.jar
