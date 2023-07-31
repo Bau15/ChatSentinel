@@ -1,5 +1,5 @@
 version: "1"
 rules:
   - base: master
-    upstream: LinsaFTW:master
+    upstream: arkflame:master
     mergeMethod: merge
