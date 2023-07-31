@@ -127,6 +127,13 @@ public class AsyncPlayerChatListener implements Listener {
 			String lang = chatPlayer.getLocale();
 			String message = originalMessage;
 
+			processModule(server, player, chatPlayer, messagesModule, moduleManager.getCapsModule(), event, playerName, message, originalMessage, lang);
+			if (event.isCancelled()) return;
+			processModule(server, player, chatPlayer, messagesModule, moduleManager.getCooldownModule(), event, playerName, message, originalMessage, lang);
+			if (event.isCancelled()) return;
+			processModule(server, player, chatPlayer, messagesModule, moduleManager.getFloodModule(), event, playerName, message, originalMessage, lang);
+			if (event.isCancelled()) return;
+
 			if (generalModule.isSanitizeEnabled()) {
 				message = generalModule.sanitize(message);
 			}
@@ -143,12 +150,7 @@ public class AsyncPlayerChatListener implements Listener {
 			}
 
 			message = message.trim();
-
-			processModule(server, player, chatPlayer, messagesModule, moduleManager.getCapsModule(), event, playerName, message, originalMessage, lang);
-			processModule(server, player, chatPlayer, messagesModule, moduleManager.getCooldownModule(), event, playerName, message, originalMessage, lang);
-			processModule(server, player, chatPlayer, messagesModule, moduleManager.getFloodModule(), event, playerName, message, originalMessage, lang);
 			processModule(server, player, chatPlayer, messagesModule, moduleManager.getBlacklistModule(), event, playerName, message, originalMessage, lang);
-			processModule(server, player, chatPlayer, messagesModule, moduleManager.getSyntaxModule(), event, playerName, message, originalMessage, lang);
 
 			if (!event.isCancelled()) {
 				String newMessage = generalModule.isFilterOther() ? generalModule.sanitize(event.getMessage()) : event.getMessage();
