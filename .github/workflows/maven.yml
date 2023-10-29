@@ -28,3 +28,9 @@ jobs:
         with:
           name: ChatSentinel${{ matrix.java }}
           path: target/ChatSentinel.jar
+      - uses: "marvinpinto/action-automatic-releases@latest"
+        with:
+          repo_token: "${{ secrets.GITHUB_TOKEN }}"
+          prerelease: false
+          files: |
+            /target/Chatsentinel.jar
