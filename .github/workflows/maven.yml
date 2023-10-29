@@ -28,9 +28,10 @@ jobs:
         with:
           name: ChatSentinel${{ matrix.java }}
           path: target/ChatSentinel.jar
-      - uses: "marvinpinto/action-automatic-releases@latest"
+      - name: Upload the artifact into releases
+        uses: softprops/action-gh-release@v1
         with:
-          repo_token: "${{ secrets.GITHUB_TOKEN }}"
-          prerelease: false
           files: |
-            *.jar
+            target/*.jar
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
