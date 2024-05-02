@@ -6,7 +6,7 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
 
-import dev._2lstudios.chatsentinel.shared.interfaces.Module;
+import dev._2lstudios.chatsentinel.shared.modules.Module;
 
 public class ChatPlayer {
     private int historySize = 3;

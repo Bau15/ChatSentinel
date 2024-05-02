@@ -33,7 +33,7 @@ public class ChatSentinelCommand extends Command {
 		ChatPlayer chatPlayer = null;
 
 		if (sender instanceof ProxiedPlayer) {
-			chatPlayer = chatPlayerManager.getPlayerOrCreate(((ProxiedPlayer) sender));
+			chatPlayer = chatPlayerManager.getPlayer(((ProxiedPlayer) sender));
 			lang = chatPlayer.getLocale();
 		} else {
 			lang = "en";

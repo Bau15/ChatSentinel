@@ -21,7 +21,7 @@ public class PlayerJoinListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayerOrCreate(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
 
         if (chatPlayer != null) {
             // Reset the locale of the player if already exists

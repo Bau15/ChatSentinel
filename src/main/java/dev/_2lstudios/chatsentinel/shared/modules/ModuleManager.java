@@ -14,7 +14,7 @@ public abstract class ModuleManager {
 		this.capsModule = new CapsModule();
 		this.cooldownModule = new CooldownModule();
 		this.floodModule = new FloodModule();
-		this.blacklistModule = new BlacklistModule();
+		this.blacklistModule = new BlacklistModule(this);
 		this.syntaxModule = new SyntaxModule();
 		this.messagesModule = new MessagesModule();
 		this.generalModule = new GeneralModule();

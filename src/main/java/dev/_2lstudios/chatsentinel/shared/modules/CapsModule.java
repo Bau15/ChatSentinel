@@ -1,23 +1,20 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
-import dev._2lstudios.chatsentinel.shared.interfaces.Module;
-import dev._2lstudios.chatsentinel.shared.utils.PlaceholderUtil;
 
-public class CapsModule implements Module {
-	private boolean enabled, replace;
-	private int max, maxWarns;
-	private String warnNotification;
-	private String[] commands;
+public class CapsModule extends Module {
+	private boolean replace;
+	private int maxCaps;
 
 	public void loadData(boolean enabled, boolean replace, int max, int maxWarns,
 			String warnNotification, String[] commands) {
-		this.enabled = enabled;
+		setEnabled(enabled);
+		setMaxWarns(maxWarns);
+		setWarnNotification(warnNotification);
+		setCommands(commands);
 		this.replace = replace;
-		this.max = max;
-		this.maxWarns = maxWarns;
-		this.warnNotification = warnNotification;
-		this.commands = commands;
+		this.maxCaps = max;
 	}
 
 	public boolean isReplace() {
@@ -29,42 +26,25 @@ public class CapsModule implements Module {
 	}
 
 	@Override
-	public boolean meetsCondition(ChatPlayer chatPlayer, String message) {
-		if (this.enabled && this.capsCount(message) > max)
-			return true;
+	public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
+			String originalMessage, String lang) {
+		if (isEnabled() && this.capsCount(originalMessage) > maxCaps) {
+			boolean cancelled = false;
 
-		return false;
+			if (isReplace()) {
+				originalMessage = originalMessage.toLowerCase();
+			} else {
+				cancelled = true;
+			}
+
+			return new ChatEventResult(originalMessage, cancelled);
+		}
+
+		return null;
 	}
 
 	@Override
 	public String getName() {
 		return "Caps";
-	}
-
-	@Override
-	public String[] getCommands(String[][] placeholders) {
-		if (this.commands.length > 0) {
-			String[] commands = this.commands.clone();
-
-			for (int i = 0; i < commands.length; i++) {
-				commands[i] = PlaceholderUtil.replacePlaceholders(commands[i], placeholders);
-			}
-
-			return commands;
-		} else
-			return new String[0];
-	}
-
-	@Override
-	public String getWarnNotification(String[][] placeholders) {
-		if (!this.warnNotification.isEmpty()) {
-			return PlaceholderUtil.replacePlaceholders(this.warnNotification, placeholders);
-		} else
-			return null;
-	}
-
-	@Override
-	public int getMaxWarns() {
-		return maxWarns;
 	}
 }

@@ -20,7 +20,7 @@ public class PostLoginListener implements Listener {
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
         ProxiedPlayer player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayerOrCreate(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
 
         if (chatPlayer != null) {
             // Reset the locale of the player if already exists

@@ -1,18 +1,21 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
-import dev._2lstudios.chatsentinel.shared.interfaces.Module;
 
-public class CooldownModule implements Module {
-	private boolean enabled;
-	private int repeatTimeGlobal, repeatTime, normalTime, commandTime;
+public class CooldownModule extends Module {
+	private int repeatTimeGlobal;
+	private int repeatTime;
+	private int normalTime;
+	private int commandTime;
+
 	private long lastMessageTime = 0L;
 	private String lastMessage = "";
 
 	public void loadData(boolean enabled, int repeatTimeGlobal, int repeatTime,
 			int normalTime,
 			int commandTime) {
-		this.enabled = enabled;
+		setEnabled(enabled);
 		this.repeatTimeGlobal = repeatTimeGlobal;
 		this.repeatTime = repeatTime;
 		this.normalTime = normalTime;
@@ -20,24 +23,24 @@ public class CooldownModule implements Module {
 	}
 
 	public float getRemainingTime(ChatPlayer chatPlayer, String message) {
-		if (this.enabled && message != null) {
+		if (isEnabled() && message != null) {
 			long currentTime = System.currentTimeMillis();
-			long lastMessageTime = currentTime - chatPlayer.getLastMessageTime();
-			long lastMessageTimeGlobal = currentTime - this.lastMessageTime;
+			long lastMessageTimePassed = currentTime - chatPlayer.getLastMessageTime();
+			long lastMessageTimePassedGlobal = currentTime - this.lastMessageTime;
 			long remainingTime;
 
 			if (message.startsWith("/")) {
-				remainingTime = this.commandTime - lastMessageTime;
-			} else if (chatPlayer.isLastMessage(message) && lastMessageTime < this.repeatTime) {
-				remainingTime = this.repeatTime - lastMessageTime;
-			} else if (this.lastMessage.equals(message) && lastMessageTimeGlobal < this.repeatTimeGlobal) {
-				remainingTime = this.repeatTimeGlobal - lastMessageTimeGlobal;
+				remainingTime = this.commandTime - lastMessageTimePassed;
+			} else if (chatPlayer.isLastMessage(message) && lastMessageTimePassed < this.repeatTime) {
+				remainingTime = this.repeatTime - lastMessageTimePassed;
+			} else if (this.lastMessage.equals(message) && lastMessageTimePassedGlobal < this.repeatTimeGlobal) {
+				remainingTime = this.repeatTimeGlobal - lastMessageTimePassedGlobal;
 			} else {
-				remainingTime = this.normalTime - lastMessageTime;
+				remainingTime = this.normalTime - lastMessageTimePassed;
 			}
 
 			if (remainingTime > 0) {
-				return ((float) (remainingTime / 100)) / 10;
+				return ((int) (remainingTime / 100F)) / 10F;
 			}
 		}
 
@@ -45,8 +48,13 @@ public class CooldownModule implements Module {
 	}
 
 	@Override
-	public boolean meetsCondition(ChatPlayer chatPlayer, String message) {
-		return getRemainingTime(chatPlayer, message) > 0;
+	public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
+			String originalMessage, String lang) {
+		if (isEnabled() && getRemainingTime(chatPlayer, originalMessage) > 0) {
+			return new ChatEventResult(originalMessage, true);
+		}
+
+		return null;
 	}
 
 	@Override
@@ -55,18 +63,8 @@ public class CooldownModule implements Module {
 	}
 
 	@Override
-	public String[] getCommands(String[][] placeholders) {
-		return new String[0];
-	}
-
-	@Override
 	public String getWarnNotification(String[][] placeholders) {
 		return null;
-	}
-
-	@Override
-	public int getMaxWarns() {
-		return 0;
 	}
 
 	public void setLastMessage(String lastMessage, long lastMessageTime) {

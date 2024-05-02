@@ -1,22 +1,18 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
-import dev._2lstudios.chatsentinel.shared.interfaces.Module;
-import dev._2lstudios.chatsentinel.shared.utils.PlaceholderUtil;
 
-public class SyntaxModule implements Module {
-	private boolean enabled;
-	private int maxWarns;
-	private String warnNotification;
-	private String[] whitelist, commands;
+public class SyntaxModule extends Module {
+	private String[] whitelist;
 
 	public void loadData(boolean enabled, int maxWarns, String warnNotification,
 			String[] whitelist, String[] commands) {
-		this.enabled = enabled;
-		this.maxWarns = maxWarns;
-		this.warnNotification = warnNotification;
+		setEnabled(enabled);
+		setMaxWarns(maxWarns);
+		setWarnNotification(warnNotification);
+		setCommands(commands);
 		this.whitelist = whitelist;
-		this.commands = commands;
 	}
 
 	public boolean isWhitelisted(String message) {
@@ -29,40 +25,18 @@ public class SyntaxModule implements Module {
 	}
 
 	@Override
-	public boolean meetsCondition(ChatPlayer chatPlayer, String message) {
-		return (enabled && !isWhitelisted(message) && hasSyntax(message));
+	public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
+			String message, String lang) {
+		if (isEnabled() && !isWhitelisted(message) && hasSyntax(message)) {
+			return new ChatEventResult(message, true);
+		}
+
+		return null;
 	}
 
 	@Override
 	public String getName() {
 		return "Syntax";
-	}
-
-	@Override
-	public String[] getCommands(String[][] placeholders) {
-		if (this.commands.length > 0) {
-			String[] commands = this.commands.clone();
-
-			for (int i = 0; i < commands.length; i++) {
-				commands[i] = PlaceholderUtil.replacePlaceholders(commands[i], placeholders);
-			}
-
-			return commands;
-		} else
-			return new String[0];
-	}
-
-	@Override
-	public String getWarnNotification(String[][] placeholders) {
-		if (!this.warnNotification.isEmpty()) {
-			return PlaceholderUtil.replacePlaceholders(this.warnNotification, placeholders);
-		} else
-			return null;
-	}
-
-	@Override
-	public int getMaxWarns() {
-		return maxWarns;
 	}
 
 	private boolean hasSyntax(String message) {
@@ -77,8 +51,9 @@ public class SyntaxModule implements Module {
 
 			String[] syntax = command.split(":");
 
-			if (syntax.length > 1)
+			if (syntax.length > 1) {
 				return true;
+			}
 		}
 
 		return false;

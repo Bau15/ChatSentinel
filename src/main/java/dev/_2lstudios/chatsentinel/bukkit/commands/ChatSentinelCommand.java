@@ -30,7 +30,7 @@ public class ChatSentinelCommand implements CommandExecutor {
 		ChatPlayer chatPlayer = null;
 
 		if (sender instanceof Player) {
-			chatPlayer = chatPlayerManager.getPlayerOrCreate(((Player) sender));
+			chatPlayer = chatPlayerManager.getPlayer(((Player) sender));
 			lang = chatPlayer.getLocale();
 		} else {
 			lang = "en";

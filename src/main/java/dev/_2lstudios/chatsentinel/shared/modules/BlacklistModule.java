@@ -2,26 +2,29 @@ package dev._2lstudios.chatsentinel.shared.modules;
 
 import java.util.regex.Pattern;
 
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
-import dev._2lstudios.chatsentinel.shared.interfaces.Module;
 import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
-import dev._2lstudios.chatsentinel.shared.utils.PlaceholderUtil;
 
-public class BlacklistModule implements Module {
-	private boolean enabled, fakeMessage, hideWords;
-	private int maxWarns;
-	private String warnNotification;
-	private String[] commands;
+public class BlacklistModule extends Module {
+	private ModuleManager moduleManager;
+
+	private boolean fakeMessage;
+	private boolean hideWords;
 	private Pattern pattern;
+
+	public BlacklistModule(ModuleManager moduleManager) {
+		this.moduleManager = moduleManager;
+	}
 
 	public void loadData(boolean enabled, boolean fakeMessage, boolean hideWords, int maxWarns,
 			String warnNotification, String[] commands, String[] patterns) {
-		this.enabled = enabled;
+		setEnabled(enabled);
+		setMaxWarns(maxWarns);
+		setWarnNotification(warnNotification);
+		setCommands(commands);
 		this.fakeMessage = fakeMessage;
 		this.hideWords = hideWords;
-		this.maxWarns = maxWarns;
-		this.warnNotification = warnNotification;
-		this.commands = commands;
 		this.pattern = PatternUtil.compile(patterns);
 	}
 
@@ -38,41 +41,57 @@ public class BlacklistModule implements Module {
 	}
 
 	@Override
-	public boolean meetsCondition(ChatPlayer chatPlayer, String message) {
-		message = message.startsWith("/") && message.contains(" ") ? message.substring(message.indexOf(" ")) : message;
+	public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
+			String message, String lang) {
+		if (!isEnabled()) {
+			return null;
+		}
 
-		return enabled && pattern.matcher(message).find();
+		boolean cancelled = false;
+		boolean hide = false;
+
+		GeneralModule generalModule = moduleManager.getGeneralModule();
+		WhitelistModule whitelistModule = moduleManager.getWhitelistModule();
+
+		String sanitizedMessage = message;
+
+		// Filter the arguments of the commands
+		if (sanitizedMessage.startsWith("/") && message.contains(" ")) {
+			sanitizedMessage = sanitizedMessage.substring(message.indexOf(" "));
+		}
+
+		// Remove weird stuff
+		if (generalModule.isSanitizeEnabled()) {
+			sanitizedMessage = generalModule.sanitize(message);
+		}
+
+		// Remove names
+		if (generalModule.isSanitizeNames()) {
+			sanitizedMessage = generalModule.sanitizeNames(message);
+		}
+
+		// Remove whitelisted stuff
+		if (whitelistModule.isEnabled()) {
+			sanitizedMessage = whitelistModule.getPattern().matcher(message).replaceAll("");
+		}
+
+		if (pattern.matcher(sanitizedMessage).find()) {
+			if (isFakeMessage()) {
+				hide = true;
+			} else if (isHideWords()) {
+				message = pattern.matcher(message).replaceAll("***");
+			} else {
+				cancelled = true;
+			}
+
+			return new ChatEventResult(message, cancelled, hide);
+		}
+
+		return null;
 	}
 
 	@Override
 	public String getName() {
 		return "Blacklist";
-	}
-
-	@Override
-	public String[] getCommands(String[][] placeholders) {
-		if (this.commands.length > 0) {
-			String[] commands = this.commands.clone();
-
-			for (int i = 0; i < commands.length; i++) {
-				commands[i] = PlaceholderUtil.replacePlaceholders(commands[i], placeholders);
-			}
-
-			return commands;
-		} else
-			return new String[0];
-	}
-
-	@Override
-	public String getWarnNotification(String[][] placeholders) {
-		if (!this.warnNotification.isEmpty()) {
-			return PlaceholderUtil.replacePlaceholders(this.warnNotification, placeholders);
-		} else
-			return null;
-	}
-
-	@Override
-	public int getMaxWarns() {
-		return maxWarns;
 	}
 }
