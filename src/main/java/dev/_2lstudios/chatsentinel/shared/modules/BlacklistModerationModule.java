@@ -6,34 +6,47 @@ import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
 
-public class BlacklistModule extends Module {
+public class BlacklistModerationModule extends ModerationModule {
 	private ModuleManager moduleManager;
 
 	private boolean fakeMessage;
-	private boolean hideWords;
+  	private boolean blockRawMessage;
 	private Pattern pattern;
 
-	public BlacklistModule(ModuleManager moduleManager) {
+	private boolean censorshipEnabled;
+	private String censorshipReplacement;
+
+	public BlacklistModerationModule(ModuleManager moduleManager) {
 		this.moduleManager = moduleManager;
 	}
 
-	public void loadData(boolean enabled, boolean fakeMessage, boolean hideWords, int maxWarns,
-			String warnNotification, String[] commands, String[] patterns) {
+	public void loadData(boolean enabled, boolean fakeMessage, boolean censorshipEnabled, String censorshipReplacement, int maxWarns,
+        String warnNotification, String[] commands, String[] patterns, boolean blockRawMessage) {
 		setEnabled(enabled);
 		setMaxWarns(maxWarns);
 		setWarnNotification(warnNotification);
 		setCommands(commands);
 		this.fakeMessage = fakeMessage;
-		this.hideWords = hideWords;
+		this.censorshipEnabled = censorshipEnabled;
+		this.censorshipReplacement = censorshipReplacement;
 		this.pattern = PatternUtil.compile(patterns);
+		this.blockRawMessage = blockRawMessage;
 	}
 
 	public boolean isFakeMessage() {
 		return this.fakeMessage;
 	}
 
-	public boolean isHideWords() {
-		return this.hideWords;
+	public boolean isCensorshipEnabled() {
+		return censorshipEnabled;
+	}
+
+	public String getCensorshipReplacement() {
+		return censorshipReplacement;
+	}
+
+	public boolean isBlockRawMessage() {
+		return this.blockRawMessage;
 	}
 
 	public Pattern getPattern() {
@@ -78,9 +91,9 @@ public class BlacklistModule extends Module {
 		if (pattern.matcher(sanitizedMessage).find()) {
 			if (isFakeMessage()) {
 				hide = true;
-			} else if (isHideWords()) {
-				message = pattern.matcher(message).replaceAll("***");
-			} else {
+			} else if (isCensorshipEnabled()) {
+				message = pattern.matcher(message).replaceAll(getCensorshipReplacement());
+			} else if (isBlockRawMessage()) {
 				cancelled = true;
 			}
 
