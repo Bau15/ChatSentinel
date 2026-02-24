@@ -107,7 +107,7 @@ flood:
   replace: true
 
   # Regex pattern to do the checks and replacement.
-  pattern: (\w)\1{5,}|(\w{28,})|([^\wñ]{20,})|(^.{220,}$)
+  pattern: '(([\p{L}\p{N}_])\2{3,})|([^\p{L}\p{N}_ñ]{20,})|(^.{220,}$)'
 
   warn:
     # Amount of warns required to execute the commands.
