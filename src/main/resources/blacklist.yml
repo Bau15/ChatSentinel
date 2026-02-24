@@ -1,8 +1,21 @@
 # This plugin uses Regex for checking messages.
 expressions:
-  # IPs and Websites
-  - ([\d]{1,3}[., ]{1,}){3,}([\d]{1,3})
-  - ([ &.,]|^)([\w]{5,})([., ]){1,}(com|org|net|biz|info|name|mobi|kz|tk|server.pro|serv.nu)([ &.,]|$)
+  # Regex 1: Detects obfuscated links/domains (e.g., spaced letters and/or spaced dots)
+  # Examples it aims to catch: "g o o g l e . c o m", "my site . ru", "abc . com"
+  - '(?i)(?:([A-Za-z0-9]\s?){3,}.*?(?:\s+\.\s+|\.(?=\s*[A-Za-z]{1,3}\b))\s*[A-Za-z]{1,3}\b|(?:[A-Za-z0-9]+\s+){2,3}[A-Za-z0-9-]+\s*\.\s*[A-Za-z]{1,3}\b)'
+
+  # Regex 2: Detects short 4-char "server" names
+  # Pattern: digit-letter-digit-letter OR letter-digit-letter-digit (case-insensitive).
+  # Examples matched: "2b2t", "f3f5".
+  - '(?i)\b(?:\d[a-z]\d[a-z]|[a-z]\d[a-z]\d)\b'
+
+  # Regex 3: Strict IPv4 (each octet 0–255), blocks real IPs like 135.181.237.31
+  # Won't match invalid "999.999.999.999"
+  - '\b(?:(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\.){3}(?:25[0-5]|2[0-4]\d|1\d\d|[1-9]?\d)\b'
+
+  # Regex 4: Exactly ":" + 5 digits and nothing else (anchored).
+  # Examples matched: ":25565".
+  - '^:\d{5}$'
   # Swearing (Spanish)
   - boludito
   - chot(o|a)
