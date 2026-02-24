@@ -7,12 +7,14 @@ public class CapsModerationModule extends ModerationModule {
 	private boolean replace;
 	private int maxCaps;
 
-	public void loadData(boolean enabled, boolean replace, int max, int maxWarns,
-			String warnNotification, String[] commands) {
+	public void loadData(boolean enabled, String customName, boolean replace, int max, int maxWarns,
+			String warnNotification, boolean webhookEnabled, String[] commands) {
 		setEnabled(enabled);
 		setMaxWarns(maxWarns);
 		setWarnNotification(warnNotification);
+		setWebhookEnabled(webhookEnabled);
 		setCommands(commands);
+		setCustomName(customName);
 		this.replace = replace;
 		this.maxCaps = max;
 	}
