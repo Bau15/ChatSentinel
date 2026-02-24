@@ -6,12 +6,14 @@ import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 public class SyntaxModerationModule extends ModerationModule {
 	private String[] whitelist;
 
-	public void loadData(boolean enabled, int maxWarns, String warnNotification,
-			String[] whitelist, String[] commands) {
+	public void loadData(boolean enabled, String customName, int maxWarns, String warnNotification,
+			boolean webhookEnabled, String[] whitelist, String[] commands) {
 		setEnabled(enabled);
 		setMaxWarns(maxWarns);
 		setWarnNotification(warnNotification);
+		setWebhookEnabled(webhookEnabled);
 		setCommands(commands);
+		setCustomName(customName);
 		this.whitelist = whitelist;
 	}
 
