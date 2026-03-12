@@ -97,15 +97,16 @@ public class ChatSentinel extends JavaPlugin {
 	}
 
 	public String[][] getPlaceholders(Player player, ChatPlayer chatPlayer, ModerationModule moderationModule, String message) {
-		String playerName = player.getName();
+		String playerName      = player.getName();
 		String customModuleName = moderationModule.getCustomName();
-		int warns = chatPlayer.getWarns(moderationModule);
-		int maxWarns = moderationModule.getMaxWarns();
-		float remainingTime = moduleManager.getCooldownModule().getRemainingTime(chatPlayer, message);
+		int warns              = chatPlayer.getWarns(moderationModule);
+		int maxWarns           = moderationModule.getMaxWarns();
+		float remainingTime    = moduleManager.getCooldownModule().getRemainingTime(chatPlayer, message);
+		String serverName      = getServer().getName(); //
 
 		return new String[][] {
-				{ "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%" },
-				{ playerName, customModuleName, message, String.valueOf(warns), String.valueOf(maxWarns), String.valueOf(remainingTime) }
+				{ "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%", "%server_name%" },
+				{ playerName, customModuleName, message, String.valueOf(warns), String.valueOf(maxWarns), String.valueOf(remainingTime), serverName }
 		};
 	}
 
