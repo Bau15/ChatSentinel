@@ -54,7 +54,7 @@ public class ServerCommandListener implements Listener {
 
 		// Set last message
 		if (!event.isCancelled()) {
-			chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+			chatPlayer.addLastCommand(System.currentTimeMillis());
 		}
 	}
 }

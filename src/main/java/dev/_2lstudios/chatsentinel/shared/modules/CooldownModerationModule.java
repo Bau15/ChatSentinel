@@ -25,11 +25,12 @@ public class CooldownModerationModule extends ModerationModule {
 	public float getRemainingTime(ChatPlayer chatPlayer, String message) {
 		if (isEnabled() && message != null) {
 			long currentTime = System.currentTimeMillis();
-			long lastMessageTimePassed = currentTime - chatPlayer.getLastMessageTime();
+			boolean isCommand = message.startsWith("/");
+			long lastMessageTimePassed = currentTime - (isCommand ? chatPlayer.getLastCommandTime() : chatPlayer.getLastMessageTime());
 			long lastMessageTimePassedGlobal = currentTime - this.lastMessageTime;
 			long remainingTime;
 
-			if (message.startsWith("/")) {
+			if (isCommand) {
 				remainingTime = this.commandTime - lastMessageTimePassed;
 			} else if (chatPlayer.isLastMessage(message) && lastMessageTimePassed < this.repeatTime) {
 				remainingTime = this.repeatTime - lastMessageTimePassed;

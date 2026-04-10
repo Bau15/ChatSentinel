@@ -62,7 +62,11 @@ public class ChatListener {
 
 		// Set last message
 		if (event.getResult().isAllowed()) {
-			chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+			if (message.startsWith("/")) {
+				chatPlayer.addLastCommand(System.currentTimeMillis());
+			} else {
+				chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+			}
 		}
 	}
 }
