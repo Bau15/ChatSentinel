@@ -15,6 +15,7 @@ public class ChatPlayer {
     private Deque<String> lastMessages;
     private String locale = null;
     private long lastMessageTime;
+    private long lastCommandTime;
     private boolean notify = false;
 
     public ChatPlayer(UUID uuid) {
@@ -22,6 +23,7 @@ public class ChatPlayer {
         this.warns = new HashMap<>();
         this.lastMessages = new ArrayDeque<>(historySize);
         this.lastMessageTime = 0;
+        this.lastCommandTime = 0;
     }
 
     public int getWarns(ModerationModule moderationModule) {
@@ -83,12 +85,20 @@ public class ChatPlayer {
         return this.lastMessageTime;
     }
 
+    public long getLastCommandTime() {
+        return this.lastCommandTime;
+    }
+
     public void addLastMessage(String lastMessage, long lastMessageTime) {
         if (lastMessages.size() > historySize) {
             lastMessages.removeLast();
         }
         lastMessages.offerFirst(removeDigits(lastMessage));
         this.lastMessageTime = lastMessageTime;
+    }
+
+    public void addLastCommand(long lastCommandTime) {
+        this.lastCommandTime = lastCommandTime;
     }
 
     public void clearWarns() {

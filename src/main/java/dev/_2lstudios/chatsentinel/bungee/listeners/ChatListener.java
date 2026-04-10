@@ -71,7 +71,11 @@ public class ChatListener implements Listener {
 
 		// Set last message
 		if (!event.isCancelled()) {
-			chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+			if (message.startsWith("/")) {
+				chatPlayer.addLastCommand(System.currentTimeMillis());
+			} else {
+				chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+			}
 		}
 	}
 }
