@@ -19,6 +19,7 @@ import dev._2lstudios.chatsentinel.bukkit.utils.ConfigUtil;
 import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.bukkit.utils.FoliaAPI;
 
 public class ChatSentinel extends JavaPlugin {
 	// Static instance
@@ -59,7 +60,7 @@ public class ChatSentinel extends JavaPlugin {
 
 		getCommand("chatsentinel").setExecutor(new ChatSentinelCommand(chatPlayerManager, chatNotificationManager, moduleManager, server));
 
-		getServer().getScheduler().runTaskTimerAsynchronously(this, () -> {
+		FoliaAPI.runTaskTimerAsync(this, ignored -> {
 			if (generalModule.needsNicknameCompile()) {
 				generalModule.compileNicknamesPattern();
 			}
@@ -69,7 +70,7 @@ public class ChatSentinel extends JavaPlugin {
 	public void dispatchCommmands(ModerationModule moderationModule, ChatPlayer chatPlayer, String[][] placeholders) {
 		Server server = getServer();
 
-		server.getScheduler().runTask(this, () -> {
+		FoliaAPI.runTask(this, () -> {
 			ConsoleCommandSender console = server.getConsoleSender();
 
 			for (String command : moderationModule.getCommands(placeholders)) {
@@ -177,7 +178,7 @@ public class ChatSentinel extends JavaPlugin {
 				// Send discord webhook notification
 				Server server = getServer();
 				DiscordWebhookModule discordWebhookModule = moduleManager.getDiscordWebhookModule();
-				server.getScheduler().runTaskAsynchronously(this, () -> discordWebhookModule.dispatchWebhookNotification(moderationModule, placeholders));
+				FoliaAPI.runTaskAsync(this, () -> discordWebhookModule.dispatchWebhookNotification(moderationModule, placeholders));
 
 				// Update message
 				finalResult.setMessage(result.getMessage());
