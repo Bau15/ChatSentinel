@@ -1,5 +1,7 @@
 package dev._2lstudios.chatsentinel.bungee.listeners;
 
+import dev._2lstudios.chatsentinel.bungee.ChatSentinel;
+import dev._2lstudios.chatsentinel.bungee.platform.BungeeChatUser;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
@@ -25,7 +27,8 @@ public class PlayerDisconnectListener implements Listener {
         generalModule.removeNickname(event.getPlayer().getName());
 
         ProxiedPlayer player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BungeeChatUser(player,
+                ChatSentinel.getInstance().getMessageSink()));
         if (chatPlayer != null && chatNotificationManager.containsPlayer(chatPlayer)) {
             chatNotificationManager.removePlayer(chatPlayer);
         }

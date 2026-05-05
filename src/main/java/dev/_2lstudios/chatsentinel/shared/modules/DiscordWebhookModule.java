@@ -36,9 +36,13 @@ public class DiscordWebhookModule {
     private String  description;
     private String  messageFieldName;
     private String  serverFieldName;
+    private String  sourceFileFieldName;
+    private String  sourceModuleFieldName;
+    private String  matchedTextFieldName;
     private String  footerText;
     private String  footerIconUrl;
     private String  thumbnailUrl;
+    private boolean invalidWebhookUrlLogged;
 
     public void loadData(
             boolean enabled,         String webhookUrl,
@@ -46,6 +50,7 @@ public class DiscordWebhookModule {
             String authorName,       String authorUrl,       String authorIconUrl,
             String title,            String color,           String description,
             String messageFieldName, String serverFieldName,
+            String sourceFileFieldName, String sourceModuleFieldName, String matchedTextFieldName,
             String footerText,       String footerIconUrl,   String thumbnailUrl) {
 
         this.enabled          = enabled;
@@ -60,9 +65,13 @@ public class DiscordWebhookModule {
         this.description      = description;
         this.messageFieldName = messageFieldName;
         this.serverFieldName  = serverFieldName;
+        this.sourceFileFieldName = sourceFileFieldName;
+        this.sourceModuleFieldName = sourceModuleFieldName;
+        this.matchedTextFieldName = matchedTextFieldName;
         this.footerText       = footerText;
         this.footerIconUrl    = footerIconUrl;
         this.thumbnailUrl     = thumbnailUrl;
+        this.invalidWebhookUrlLogged = false;
     }
 
     public boolean isEnabled() {
@@ -71,20 +80,24 @@ public class DiscordWebhookModule {
 
     public void dispatchWebhookNotification(ModerationModule moderationModule, String[][] placeholders) {
         if (!enabled || !moderationModule.isWebhookEnabled()) return;
+        if (!isWebhookUrlValid()) return;
 
         try {
-            String message = PlaceholderUtil.replacePlaceholders("%message%",     placeholders);
-            String server  = PlaceholderUtil.replacePlaceholders("%server_name%", placeholders);
-            String desc    = PlaceholderUtil.replacePlaceholders(description,     placeholders);
+            String message      = PlaceholderUtil.replacePlaceholders("%message%",       placeholders);
+            String server       = PlaceholderUtil.replacePlaceholders("%server_name%",   placeholders);
+            String sourceFile   = PlaceholderUtil.replacePlaceholders("%source_file%",   placeholders);
+            String sourceModule = PlaceholderUtil.replacePlaceholders("%source_module%", placeholders);
+            String matchedText  = PlaceholderUtil.replacePlaceholders("%matched_text%",  placeholders);
+            String desc         = PlaceholderUtil.replacePlaceholders(description,       placeholders);
 
-            sendWebhook(buildPayload(message, server, desc));
+            sendWebhook(buildPayload(message, server, sourceFile, sourceModule, matchedText, desc));
 
         } catch (Exception e) {
             LOGGER.log(Level.WARNING, "Failed to dispatch Discord webhook notification", e);
         }
     }
 
-    private String buildPayload(String message, String server, String desc) {
+    private String buildPayload(String message, String server, String sourceFile, String sourceModule, String matchedText, String desc) {
         int    colorInt = parseColor(color);
         String ts       = OffsetDateTime.now().format(TIMESTAMP_FMT);
 
@@ -108,7 +121,10 @@ public class DiscordWebhookModule {
                 + "},"
                 + "\"fields\":["
                 + field(messageFieldName, message, true) + ","
-                + field(serverFieldName,  server,  true)
+                + field(serverFieldName,  server,  true) + ","
+                + field(sourceFileFieldName, sourceFile, true) + ","
+                + field(sourceModuleFieldName, sourceModule, true) + ","
+                + field(matchedTextFieldName, matchedText, false)
                 + "]"
                 + "}]}";
     }
@@ -143,6 +159,38 @@ public class DiscordWebhookModule {
         }
 
         conn.disconnect();
+    }
+
+    private boolean isWebhookUrlValid() {
+        if (webhookUrl == null) {
+            logInvalidWebhookUrlOnce();
+            return false;
+        }
+
+        String trimmedUrl = webhookUrl.trim();
+        if (trimmedUrl.isEmpty() || "Your Discord Webhook URL here".equalsIgnoreCase(trimmedUrl)) {
+            logInvalidWebhookUrlOnce();
+            return false;
+        }
+
+        try {
+            URL url = new URL(trimmedUrl);
+            if (!"https".equalsIgnoreCase(url.getProtocol())) {
+                logInvalidWebhookUrlOnce();
+                return false;
+            }
+            webhookUrl = trimmedUrl;
+            return true;
+        } catch (IOException e) {
+            logInvalidWebhookUrlOnce();
+            return false;
+        }
+    }
+
+    private void logInvalidWebhookUrlOnce() {
+        if (invalidWebhookUrlLogged) return;
+        invalidWebhookUrlLogged = true;
+        LOGGER.warning("Discord webhook URL is blank, default, or invalid; skipping Discord webhook notifications.");
     }
 
     private static int parseColor(String hex) {

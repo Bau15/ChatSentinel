@@ -1,0 +1,19 @@
+# This plugin uses Regex for checking messages.
+expressions:
+  - boludito
+  - chot(o|a)
+  - concha
+  - (ca|k)gon
+  - forrit(o|a)
+  - fracasad(o|a)
+  - garcha
+  - imbecil
+  - maric(on|a)
+  - mierda
+  - ojete
+  - put(o|a|ito)
+  - pija
+  - pelotudo
+  - poronga
+  - rat(a|ita)
+  - ( |^)trol(o|a)( |&)

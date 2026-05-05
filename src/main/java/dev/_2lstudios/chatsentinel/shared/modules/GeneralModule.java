@@ -2,12 +2,15 @@ package dev._2lstudios.chatsentinel.shared.modules;
 
 import java.text.Normalizer;
 import java.util.Collection;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.regex.Pattern;
 
+import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
+
 public class GeneralModule {
 	private Pattern nonAlphaNumericPattern = Pattern.compile("[^a-zA-Z0-9]");
-	private Pattern nicknamesPattern = Pattern.compile("");
+	private Pattern nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
 	private Collection<String> nicknames = new HashSet<>();
 	private Collection<String> commands;
 	private boolean sanitize;
@@ -63,20 +66,18 @@ public class GeneralModule {
 	public void compileNicknamesPattern() {
 		needsNicknameCompile = false;
 
-		StringBuilder stringBuilder = new StringBuilder();
-		boolean first = true;
-
-		for (String nickname : nicknames) {
-			if (!first) {
-				stringBuilder.append("|");
-			} else {
-				first = false;
-			}
-
-			stringBuilder.append("(?i)(" + nickname + ")");
+		if (nicknames.isEmpty()) {
+			nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
+			return;
 		}
 
-		nicknamesPattern = Pattern.compile(stringBuilder.toString());
+		Collection<String> quotedNicknames = new HashSet<>();
+
+		for (String nickname : nicknames) {
+			quotedNicknames.add(Pattern.quote(nickname));
+		}
+
+		nicknamesPattern = PatternUtil.compileSafe(quotedNicknames);
 	}
 
 	public Pattern getNicknamesPattern() {

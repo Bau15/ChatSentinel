@@ -1,0 +1,183 @@
+package dev._2lstudios.chatsentinel.shared;
+
+import static org.junit.Assert.assertEquals;
+import static org.junit.Assert.assertFalse;
+import static org.junit.Assert.assertNull;
+import static org.junit.Assert.assertTrue;
+
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.UUID;
+import java.util.regex.Pattern;
+
+import org.junit.Test;
+
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompiler;
+import dev._2lstudios.chatsentinel.shared.filter.FilterExpressionFile;
+import dev._2lstudios.chatsentinel.shared.filter.FilterKind;
+import dev._2lstudios.chatsentinel.shared.filter.FilterMatch;
+import dev._2lstudios.chatsentinel.shared.filter.FilterSource;
+import dev._2lstudios.chatsentinel.shared.filter.CommonRegexGenerator;
+import dev._2lstudios.chatsentinel.shared.modules.CapitalizationModule;
+import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
+import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
+import dev._2lstudios.chatsentinel.shared.text.WarningDeliverySettings;
+import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
+
+public class SharedUnitTest {
+    @Test
+    public void compileSafe_neverMatches_whenEmpty() {
+        Pattern pattern = PatternUtil.compileSafe(Collections.<String>emptyList());
+
+        assertFalse(pattern.matcher("anything").find());
+    }
+
+    @Test
+    public void toCommonRegex_matchesLeetAndSpacedText_whenPlainTextProvided() {
+        Pattern pattern = Pattern.compile(new CommonRegexGenerator().toCommonRegex("hello"),
+                Pattern.CASE_INSENSITIVE | Pattern.UNICODE_CASE);
+
+        assertTrue(pattern.matcher("h3llo").find());
+        assertTrue(pattern.matcher("h e l l o").find());
+    }
+
+    @Test
+    public void compile_returnsSourcePathForMatchingFile_whenTwoFilesProvided() {
+        FilterSource firstSource = new FilterSource(FilterKind.BLACKLIST, "first", "a.yml", "First");
+        FilterSource secondSource = new FilterSource(FilterKind.BLACKLIST, "second", "b.yml", "Second");
+        FilterCompiler.FilterCompilation compilation = new FilterCompiler().compile(FilterKind.BLACKLIST, Arrays.asList(
+                new FilterExpressionFile(secondSource, Collections.singletonList("banana")),
+                new FilterExpressionFile(firstSource, Collections.singletonList("apple"))));
+
+        FilterMatch match = compilation.getRegistry().findFirst("green banana").get();
+
+        assertEquals("b.yml", match.getSource().getRelativePath());
+    }
+
+    @Test
+    public void processEvent_doesNotBlock_whenBlacklistMatchInsideWhitelistedPhrase() {
+        ModuleManager moduleManager = new TestModuleManager();
+        moduleManager.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList());
+        moduleManager.getWhitelistModule().loadData(true, new String[] { "your ass" });
+        moduleManager.getBlacklistModule().loadData(true, "Blacklist", false, false, "", 1, "", false,
+                new String[0], new String[] { "ass" }, true);
+
+        ChatEventResult result = moduleManager.getBlacklistModule().processEvent(
+                new ChatPlayer(UUID.randomUUID()), moduleManager.getMessagesModule(), "player", "your ass", "en");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void processEvent_blocks_whenBlacklistMatchNotWhitelistedPhrase() {
+        ModuleManager moduleManager = new TestModuleManager();
+        moduleManager.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList());
+        moduleManager.getWhitelistModule().loadData(true, new String[] { "your ass" });
+        moduleManager.getBlacklistModule().loadData(true, "Blacklist", false, false, "", 1, "", false,
+                new String[0], new String[] { "ass" }, true);
+
+        ChatEventResult result = moduleManager.getBlacklistModule().processEvent(
+                new ChatPlayer(UUID.randomUUID()), moduleManager.getMessagesModule(), "player", "ass", "en");
+
+        assertTrue(result.isCancelled());
+    }
+
+    @Test
+    public void warns_areSeparated_whenIdentityKeyDiffers() {
+        ChatPlayer chatPlayer = new ChatPlayer(UUID.randomUUID());
+
+        chatPlayer.addWarn("blacklist:one");
+        chatPlayer.addWarn("blacklist:two");
+        chatPlayer.addWarn("blacklist:two");
+
+        assertEquals(1, chatPlayer.getWarns("blacklist:one"));
+        assertEquals(2, chatPlayer.getWarns("blacklist:two"));
+    }
+
+    @Test
+    public void processEvent_ignoresPlayerNameCapitalization_whenWhitelistPlayerNamesEnabled() {
+        CapitalizationModule module = new CapitalizationModule();
+        module.loadData(true, "Capitalization", true, 0, 1, "", false, new String[0], true, new String[0],
+                () -> Collections.singletonList("ABC"));
+
+        ChatEventResult result = module.processEvent(new ChatPlayer(UUID.randomUUID()), null, "ABC", "ABC", "en");
+
+        assertNull(result);
+    }
+
+    @Test
+    public void processEvent_correctsExcessiveCapitalization_whenAboveThreshold() {
+        CapitalizationModule module = new CapitalizationModule();
+        module.loadData(true, "Capitalization", true, 2, 1, "", false, new String[0], false, new String[0],
+                () -> Collections.<String>emptyList());
+
+        ChatEventResult result = module.processEvent(new ChatPlayer(UUID.randomUUID()), null, "Steve", "hello EVERYONE", "en");
+
+        assertEquals("hello everyone", result.getMessage());
+        assertFalse(result.isCancelled());
+    }
+
+    @Test
+    public void chatSnapshot_replayExcludesDeletedEntry() {
+        ChatSnapshotModule module = new ChatSnapshotModule();
+        UUID viewer = UUID.randomUUID();
+        module.loadData(true, 40, 2, ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT);
+        ChatSnapshotModule.Entry first = module.record(UUID.randomUUID(), "Steve", "first", "first line", Collections.singleton(viewer)).get();
+        module.record(UUID.randomUUID(), "Alex", "second", "second line", Collections.singleton(viewer));
+
+        module.markDeletedEntry(first.getId());
+        String payload = module.buildReplayPayload(viewer);
+
+        assertFalse(payload.contains("first line"));
+        assertTrue(payload.contains("second line"));
+    }
+
+    @Test
+    public void getPlayer_returnsSamePlayer_whenChatUserUuidMatches() {
+        UUID uuid = UUID.randomUUID();
+        dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager manager = new dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager();
+
+        ChatPlayer first = manager.getPlayer(new TestChatUser(uuid));
+        ChatPlayer second = manager.getPlayer(uuid);
+
+        assertEquals(first, second);
+    }
+
+    private static final class TestModuleManager extends ModuleManager {
+        @Override
+        public void reloadData(dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus status) {
+        }
+    }
+
+    private static final class TestChatUser implements ChatUser {
+        private final UUID uuid;
+
+        private TestChatUser(UUID uuid) {
+            this.uuid = uuid;
+        }
+
+        @Override
+        public UUID getUniqueId() { return uuid; }
+
+        @Override
+        public String getName() { return "Steve"; }
+
+        @Override
+        public String getLocale() { return "en"; }
+
+        @Override
+        public String getServerName() { return "server"; }
+
+        @Override
+        public boolean hasPermission(String permission) { return false; }
+
+        @Override
+        public void sendMessage(String legacyMessage) { }
+
+        @Override
+        public void sendWarning(String legacyMessage, WarningDeliverySettings settings) { }
+    }
+}

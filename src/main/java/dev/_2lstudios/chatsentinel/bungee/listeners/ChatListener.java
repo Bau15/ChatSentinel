@@ -1,10 +1,10 @@
 package dev._2lstudios.chatsentinel.bungee.listeners;
 
 import dev._2lstudios.chatsentinel.bungee.ChatSentinel;
-import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
-import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
+import dev._2lstudios.chatsentinel.bungee.platform.BungeeChatUser;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.shared.chat.ProcessedChatEvent;
 import dev._2lstudios.chatsentinel.shared.modules.WhitelistModule;
 import net.md_5.bungee.api.connection.Connection;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
@@ -16,12 +16,12 @@ import net.md_5.bungee.event.EventPriority;
 public class ChatListener implements Listener {
 	private WhitelistModule whitelistModule;
 	private ChatPlayerManager chatPlayerManager;
-	private ChatNotificationManager chatNotificationManager;
+	private final ChatSentinel plugin;
 
-	public ChatListener(WhitelistModule whitelistModule, ChatPlayerManager chatPlayerManager, ChatNotificationManager chatNotificationManager) {
+	public ChatListener(ChatSentinel plugin, WhitelistModule whitelistModule, ChatPlayerManager chatPlayerManager) {
+		this.plugin = plugin;
 		this.whitelistModule = whitelistModule;
 		this.chatPlayerManager = chatPlayerManager;
-		this.chatNotificationManager = chatNotificationManager;
 	}
 
 	@EventHandler(priority = EventPriority.LOW)
@@ -57,10 +57,11 @@ public class ChatListener implements Listener {
 		String message = event.getMessage();
 
 		// Get chat player
-		ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
+		BungeeChatUser chatUser = new BungeeChatUser(player, plugin.getMessageSink());
+		ChatPlayer chatPlayer = chatPlayerManager.getPlayer(chatUser);
 
 		// Process the event
-		ChatEventResult finalResult = ChatSentinel.getInstance().processEvent(chatPlayer, player, message, chatNotificationManager);
+		ProcessedChatEvent finalResult = plugin.getChatEventProcessor().process(chatUser, message, true);
 
 		// Apply modifiers to event
 		if (finalResult.isCancelled()) {
@@ -75,6 +76,9 @@ public class ChatListener implements Listener {
 				chatPlayer.addLastCommand(System.currentTimeMillis());
 			} else {
 				chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
+				plugin.getModuleManager().getChatSnapshotModule().record(player.getUniqueId(), player.getName(),
+						finalResult.getMessage(), plugin.getModuleManager().getChatSnapshotModule()
+								.renderProxyLine(player.getName(), finalResult.getMessage()), java.util.Collections.<java.util.UUID>emptyList());
 			}
 		}
 	}

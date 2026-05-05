@@ -1,27 +1,26 @@
 package dev._2lstudios.chatsentinel.shared.chat;
 
-import java.util.HashMap;
-import java.util.Map;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ConcurrentMap;
 import java.util.UUID;
 
-import net.md_5.bungee.api.connection.ProxiedPlayer;
+import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 
 public class ChatPlayerManager {
-    private final Map<UUID, ChatPlayer> chatPlayers = new HashMap<>();
+    private final ConcurrentMap<UUID, ChatPlayer> chatPlayers = new ConcurrentHashMap<UUID, ChatPlayer>();
 
-    public ChatPlayer getPlayer(UUID uuid) {
+    public ChatPlayer getPlayer(final UUID uuid) {
         return chatPlayers.computeIfAbsent(uuid, ChatPlayer::new);
     }
 
-    public ChatPlayer getPlayer(ProxiedPlayer player) {
-        return getPlayer(player.getUniqueId());
+    public ChatPlayer getPlayer(final ChatUser user) {
+        return getPlayer(user.getUniqueId());
     }
 
-    public ChatPlayer getPlayer(org.bukkit.entity.Player player) {
-        return getPlayer(player.getUniqueId());
-    }
-
-    public ChatPlayer getPlayer(com.velocitypowered.api.proxy.Player player) {
-        return getPlayer(player.getUniqueId());
+    public List<ChatPlayer> getAllPlayers() {
+        return Collections.unmodifiableList(new ArrayList<ChatPlayer>(chatPlayers.values()));
     }
 }

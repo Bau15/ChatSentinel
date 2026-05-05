@@ -1,0 +1,10 @@
+# This plugin uses Regex for checking messages.
+expressions:
+  - idiot(a)?
+  - asshole
+  - bitch
+  - cunt
+  - dick
+  - fuck(er)?
+  - loser
+  - pussy

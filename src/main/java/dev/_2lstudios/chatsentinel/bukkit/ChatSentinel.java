@@ -1,200 +1,187 @@
 package dev._2lstudios.chatsentinel.bukkit;
 
+import dev._2lstudios.chatsentinel.bukkit.commands.ChatSentinelCommand;
+import dev._2lstudios.chatsentinel.bukkit.config.BukkitMutableModuleConfigStore;
+import dev._2lstudios.chatsentinel.bukkit.filter.BukkitUserFilterWriter;
+import dev._2lstudios.chatsentinel.bukkit.listeners.AsyncPlayerChatListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerJoinListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerMoveListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerQuitListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerTeleportListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.ServerCommandListener;
+import dev._2lstudios.chatsentinel.bukkit.modules.BukkitModuleManager;
+import dev._2lstudios.chatsentinel.bukkit.platform.BukkitChatPlatform;
+import dev._2lstudios.chatsentinel.bukkit.text.BukkitMessageSink;
+import dev._2lstudios.chatsentinel.bukkit.utils.ConfigUtil;
+import dev._2lstudios.chatsentinel.bukkit.utils.FoliaAPI;
+import dev._2lstudios.chatsentinel.shared.alerts.AlertBus;
+import dev._2lstudios.chatsentinel.shared.alerts.AlertPayload;
+import dev._2lstudios.chatsentinel.shared.alerts.LocalAlertBus;
+import dev._2lstudios.chatsentinel.shared.alerts.RedisAlertBus;
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventProcessor;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
-import dev._2lstudios.chatsentinel.shared.modules.*;
-import org.bukkit.Bukkit;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.shared.commands.ChatSentinelCommandService;
+import dev._2lstudios.chatsentinel.shared.filter.UserRegexAddService;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileError;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
+import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import org.bukkit.Server;
-import org.bukkit.command.ConsoleCommandSender;
-import org.bukkit.entity.Player;
+import org.bukkit.configuration.Configuration;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import dev._2lstudios.chatsentinel.bukkit.commands.ChatSentinelCommand;
-import dev._2lstudios.chatsentinel.bukkit.listeners.AsyncPlayerChatListener;
-import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerJoinListener;
-import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerQuitListener;
-import dev._2lstudios.chatsentinel.bukkit.listeners.ServerCommandListener;
-import dev._2lstudios.chatsentinel.bukkit.modules.BukkitModuleManager;
-import dev._2lstudios.chatsentinel.bukkit.utils.ConfigUtil;
-import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
-import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
-import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
-import dev._2lstudios.chatsentinel.bukkit.utils.FoliaAPI;
+import java.util.Optional;
 
 public class ChatSentinel extends JavaPlugin {
-	// Static instance
-	private static ChatSentinel instance;
+    private static ChatSentinel instance;
 
-	public static ChatSentinel getInstance() {
-		return instance;
-	}
+    private BukkitModuleManager moduleManager;
+    private ChatPlayerManager chatPlayerManager;
+    private ChatNotificationManager chatNotificationManager;
+    private BukkitMessageSink messageSink;
+    private BukkitChatPlatform chatPlatform;
+    private ChatEventProcessor chatEventProcessor;
+    private ChatSentinelCommandService commandService;
+    private AlertBus alertBus = new LocalAlertBus();
+    private String redisInstanceId;
 
-	public static void setInstance(ChatSentinel instance) {
-		ChatSentinel.instance = instance;
-	}
+    public static ChatSentinel getInstance() {
+        return instance;
+    }
 
-	// Module Manager
-	private BukkitModuleManager moduleManager;
+    public static void setInstance(final ChatSentinel instance) {
+        ChatSentinel.instance = instance;
+    }
 
-	public BukkitModuleManager getModuleManager() {
-		return moduleManager;
-	}
+    @Override
+    public void onEnable() {
+        setInstance(this);
 
-	@Override
-	public void onEnable() {
-		setInstance(this);
+        final ConfigUtil configUtil = new ConfigUtil(this);
+        final Server server = getServer();
+        moduleManager = new BukkitModuleManager(configUtil);
+        messageSink = new BukkitMessageSink(getLogger());
+        logCompileReport(moduleManager.getLastCompileReport());
+        final GeneralModule generalModule = moduleManager.getGeneralModule();
+        chatPlayerManager = new ChatPlayerManager();
+        chatNotificationManager = new ChatNotificationManager();
+        alertBus = createAlertBus(configUtil.get("%datafolder%/config.yml"));
+        chatPlatform = new BukkitChatPlatform(this, server, messageSink);
+        chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
+        commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
+                new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil));
 
-		ConfigUtil configUtil = new ConfigUtil(this);
-		Server server = getServer();
+        final PluginManager pluginManager = server.getPluginManager();
+        pluginManager.registerEvents(new AsyncPlayerChatListener(this, chatPlayerManager), this);
+        pluginManager.registerEvents(new PlayerJoinListener(generalModule, chatPlayerManager, chatNotificationManager), this);
+        pluginManager.registerEvents(new PlayerMoveListener(chatPlayerManager, moduleManager.getNoMoveChatModule()), this);
+        pluginManager.registerEvents(new PlayerTeleportListener(chatPlayerManager), this);
+        pluginManager.registerEvents(new PlayerQuitListener(moduleManager.getGeneralModule(), chatPlayerManager, chatNotificationManager), this);
+        pluginManager.registerEvents(new ServerCommandListener(chatPlayerManager, chatNotificationManager), this);
 
-		moduleManager = new BukkitModuleManager(configUtil);
-		GeneralModule generalModule = moduleManager.getGeneralModule();
-		ChatPlayerManager chatPlayerManager = new ChatPlayerManager();
-		ChatNotificationManager chatNotificationManager = new ChatNotificationManager();
-		PluginManager pluginManager = server.getPluginManager();
+        final ChatSentinelCommand command = new ChatSentinelCommand(this);
+        getCommand("chatsentinel").setExecutor(command);
+        getCommand("chatsentinel").setTabCompleter(command);
 
-		pluginManager.registerEvents(new AsyncPlayerChatListener(chatPlayerManager, chatNotificationManager), this);
-		pluginManager.registerEvents(new PlayerJoinListener(generalModule, chatPlayerManager, chatNotificationManager), this);
-		pluginManager.registerEvents(new PlayerQuitListener(moduleManager.getGeneralModule(), chatPlayerManager, chatNotificationManager), this);
-		pluginManager.registerEvents(new ServerCommandListener(chatPlayerManager, chatNotificationManager), this);
+        FoliaAPI.runTaskTimerAsync(this, new java.util.function.Consumer<Object>() {
+            @Override
+            public void accept(final Object ignored) {
+                if (generalModule.needsNicknameCompile()) {
+                    generalModule.compileNicknamesPattern();
+                }
+            }
+        }, 20L, 20L);
+    }
 
-		getCommand("chatsentinel").setExecutor(new ChatSentinelCommand(chatPlayerManager, chatNotificationManager, moduleManager, server));
+    @Override
+    public void onDisable() {
+        alertBus.close();
+    }
 
-		FoliaAPI.runTaskTimerAsync(this, ignored -> {
-			if (generalModule.needsNicknameCompile()) {
-				generalModule.compileNicknamesPattern();
-			}
-		}, 20L, 20L);
-	}
+    public BukkitModuleManager getModuleManager() {
+        return moduleManager;
+    }
 
-	public void dispatchCommmands(ModerationModule moderationModule, ChatPlayer chatPlayer, String[][] placeholders) {
-		Server server = getServer();
+    public ChatPlayerManager getChatPlayerManager() {
+        return chatPlayerManager;
+    }
 
-		FoliaAPI.runTask(this, () -> {
-			ConsoleCommandSender console = server.getConsoleSender();
+    public BukkitMessageSink getMessageSink() {
+        return messageSink;
+    }
 
-			for (String command : moderationModule.getCommands(placeholders)) {
-				server.dispatchCommand(console, command);
-			}
-		});
+    public ChatEventProcessor getChatEventProcessor() {
+        return chatEventProcessor;
+    }
 
-		chatPlayer.clearWarns();
-	}
+    public ChatSentinelCommandService getCommandService() {
+        return commandService;
+    }
 
-	public void dispatchNotification(ModerationModule moderationModule, String[][] placeholders, ChatNotificationManager chatNotificationManager) {
-		Server server = getServer();
-		String notificationMessage = moderationModule.getWarnNotification(placeholders);
+    private void logCompileReport(final FilterCompileReport report) {
+        if (report == null) {
+            return;
+        }
+        getLogger().info(FilterCompileStatus.formatSummary(report));
+        for (FilterCompileError error : report.getErrors()) {
+            getLogger().warning(FilterCompileStatus.formatError(error));
+        }
+    }
 
-		if (notificationMessage != null && !notificationMessage.isEmpty()) {
-			for (ChatPlayer chatPlayer : chatNotificationManager.getAllPlayers()) {
-				Player player = Bukkit.getPlayer(chatPlayer.getUniqueId());
-                if (player != null) {
-					player.sendMessage(notificationMessage);
-				}
-			}
+    private AlertBus createAlertBus(final Configuration config) {
+        if (!config.getBoolean("redis.enabled", false)) {
+            return new LocalAlertBus();
+        }
+        redisInstanceId = config.getString("redis.instance-id", "auto");
+        if (redisInstanceId == null || redisInstanceId.trim().isEmpty() || "auto".equalsIgnoreCase(redisInstanceId)) {
+            redisInstanceId = java.util.UUID.randomUUID().toString();
+        }
+        try {
+            return new RedisAlertBus(config.getString("redis.uri", "redis://localhost:6379/0"),
+                    config.getString("redis.channel", "chatsentinel:alerts"), redisInstanceId,
+                    config.getBoolean("redis.publish-alerts", true), config.getBoolean("redis.receive-alerts", true),
+                    this::dispatchRemoteAlert, getLogger());
+        } catch (RuntimeException exception) {
+            getLogger().warning("Redis alert bus disabled: " + exception.getMessage());
+            return new LocalAlertBus();
+        }
+    }
 
-			server.getConsoleSender().sendMessage(notificationMessage);
-		}
-	}
+    private void dispatchRemoteAlert(final AlertPayload payload) {
+        FoliaAPI.runTask(this, new Runnable() {
+            @Override
+            public void run() {
+                final String notificationMessage = payload.getNotificationMessage();
+                final String spyMessage = payload.getSpyMessage();
+                if (notificationMessage != null && !notificationMessage.isEmpty()) {
+                    for (ChatPlayer chatPlayer : chatNotificationManager.getAllPlayers()) {
+                        if (moduleManager.getSpyModule().isEnabled() && chatPlayer.isSpy()) {
+                            continue;
+                        }
+                        final Optional<ChatUser> user = chatPlatform.findUser(chatPlayer.getUniqueId());
+                        if (user.isPresent()) {
+                            user.get().sendMessage(notificationMessage);
+                        }
+                    }
+                    chatPlatform.sendConsoleMessage(notificationMessage);
+                }
 
-	public String[][] getPlaceholders(Player player, ChatPlayer chatPlayer, ModerationModule moderationModule, String message) {
-		String playerName      = player.getName();
-		String customModuleName = moderationModule.getCustomName();
-		int warns              = chatPlayer.getWarns(moderationModule);
-		int maxWarns           = moderationModule.getMaxWarns();
-		float remainingTime    = moduleManager.getCooldownModule().getRemainingTime(chatPlayer, message);
-		String serverName      = getServer().getName(); //
-
-		return new String[][] {
-				{ "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%", "%server_name%" },
-				{ playerName, customModuleName, message, String.valueOf(warns), String.valueOf(maxWarns), String.valueOf(remainingTime), serverName }
-		};
-	}
-
-	public void sendWarning(String[][] placeholders, ModerationModule moderationModule, Player player, String lang) {
-		String warnMessage = moduleManager.getMessagesModule().getWarnMessage(placeholders, lang, moderationModule.getName());
-
-		if (warnMessage != null && !warnMessage.isEmpty()) {
-			player.sendMessage(warnMessage);
-		}
-	}
-
-	public ChatEventResult processEvent(ChatPlayer chatPlayer, Player player, String originalMessage, ChatNotificationManager chatNotificationManager) {
-		ChatEventResult finalResult = new ChatEventResult(originalMessage, false, false);
-		MessagesModule messagesModule = moduleManager.getMessagesModule();
-		String playerName = player.getName();
-		String lang = chatPlayer.getLocale();
-		ModerationModule[] moderationModulesToProcess = {
-				moduleManager.getSyntaxModule(),
-				moduleManager.getCapsModule(),
-				moduleManager.getCooldownModule(),
-				moduleManager.getFloodModule(),
-				moduleManager.getBlacklistModule()
-		};
-
-		for (ModerationModule moderationModule : moderationModulesToProcess) {
-			// Do not check annormal commands (unless syntax or cooldown)
-			boolean isCommmand = originalMessage.startsWith("/");
-			boolean isNormalCommmand = ChatSentinel.getInstance().getModuleManager().getGeneralModule()
-					.isCommand(originalMessage);
-			if (!(moderationModule instanceof SyntaxModerationModule) &&
-					!(moderationModule instanceof CooldownModerationModule) &&
-					isCommmand &&
-					!isNormalCommmand) {
-				continue;
-			}
-
-			// Get the modified message
-			String message = finalResult.getMessage();
-
-			// Check if player has bypass
-			if (player.hasPermission(moderationModule.getBypassPermission())) {
-				continue;
-			}
-
-			// Process
-			ChatEventResult result = moderationModule.processEvent(chatPlayer, messagesModule, playerName, message, lang);
-
-			// Skip result
-			if (result != null) {
-				// Add warning
-				chatPlayer.addWarn(moderationModule);
-
-				// Get placeholders
-				String[][] placeholders = ChatSentinel.getInstance().getPlaceholders(player, chatPlayer, moderationModule,
-						message);
-
-				// Send warning
-				ChatSentinel.getInstance().sendWarning(placeholders, moderationModule, player, lang);
-
-				// Send punishment comamnds
-				if (moderationModule.hasExceededWarns(chatPlayer)) {
-					ChatSentinel.getInstance().dispatchCommmands(moderationModule, chatPlayer, placeholders);
-				}
-
-				// Send admin notification
-				ChatSentinel.getInstance().dispatchNotification(moderationModule, placeholders, chatNotificationManager);
-
-				// Send discord webhook notification
-				Server server = getServer();
-				DiscordWebhookModule discordWebhookModule = moduleManager.getDiscordWebhookModule();
-				FoliaAPI.runTaskAsync(this, () -> discordWebhookModule.dispatchWebhookNotification(moderationModule, placeholders));
-
-				// Update message
-				finalResult.setMessage(result.getMessage());
-
-				// Update hide
-				if (result.isHide())
-					finalResult.setHide(true);
-
-				// Update cancelled
-				if (result.isCancelled()) {
-					finalResult.setCancelled(true);
-					break;
-				}
-			}
-		}
-
-		return finalResult;
-	}
+                if (moduleManager.getSpyModule().isEnabled() && spyMessage != null && !spyMessage.isEmpty()) {
+                    for (ChatPlayer chatPlayer : chatPlayerManager.getAllPlayers()) {
+                        if (!chatPlayer.isSpy()) {
+                            continue;
+                        }
+                        final Optional<ChatUser> user = chatPlatform.findUser(chatPlayer.getUniqueId());
+                        if (user.isPresent() && user.get().hasPermission(moduleManager.getSpyModule().getPermission())) {
+                            user.get().sendMessage(spyMessage);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }

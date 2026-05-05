@@ -1,10 +1,25 @@
 package dev._2lstudios.chatsentinel.bungee.modules;
 
+import java.io.File;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.stream.Collectors;
 
+import dev._2lstudios.chatsentinel.bungee.ChatSentinel;
+import dev._2lstudios.chatsentinel.bungee.filter.BungeeFilterFileLoader;
 import dev._2lstudios.chatsentinel.bungee.utils.ConfigUtil;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompiler;
+import dev._2lstudios.chatsentinel.shared.filter.FilterExpressionFile;
+import dev._2lstudios.chatsentinel.shared.filter.FilterKind;
+import dev._2lstudios.chatsentinel.shared.filter.FilterModuleSettings;
+import dev._2lstudios.chatsentinel.shared.filter.FilterModuleSettingsRegistry;
+import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
+import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import net.md_5.bungee.api.connection.ProxiedPlayer;
 import net.md_5.bungee.config.Configuration;
 
 public class BungeeModuleManager extends ModuleManager {
@@ -16,17 +31,39 @@ public class BungeeModuleManager extends ModuleManager {
 	}
 
 	@Override
-	public void reloadData() {
+	public void reloadData(FilterCompileStatus status) {
 		configUtil.create("%datafolder%/config.yml");
 		configUtil.create("%datafolder%/messages.yml");
 		configUtil.create("%datafolder%/blacklist.yml");
 		configUtil.create("%datafolder%/whitelist.yml");
 
-		Configuration blacklistYml = configUtil.get("%datafolder%/blacklist.yml");
 		Configuration configYml = configUtil.get("%datafolder%/config.yml");
 		Configuration messagesYml = configUtil.get("%datafolder%/messages.yml");
 		Configuration whitelistYml = configUtil.get("%datafolder%/whitelist.yml");
 		Map<String, Map<String, String>> locales = new HashMap<>();
+		BungeeFilterFileLoader filterFileLoader = new BungeeFilterFileLoader();
+		FilterCompiler filterCompiler = new FilterCompiler();
+		File dataFolder = ChatSentinel.getInstance().getDataFolder();
+		List<FilterExpressionFile> blacklistFiles = filterFileLoader.load(FilterKind.BLACKLIST, dataFolder, configUtil);
+		List<FilterExpressionFile> whitelistFiles = filterFileLoader.load(FilterKind.WHITELIST, dataFolder, configUtil);
+		if (status != null) {
+			status.start(blacklistFiles.size() + whitelistFiles.size());
+		}
+		FilterCompiler.FilterCompilation blacklistCompilation = filterCompiler.compile(FilterKind.BLACKLIST, blacklistFiles, status);
+		FilterCompiler.FilterCompilation whitelistCompilation = filterCompiler.compile(FilterKind.WHITELIST, whitelistFiles, status);
+		FilterCompileReport compileReport = FilterCompileReport.combine(blacklistCompilation.getReport(), whitelistCompilation.getReport());
+		setLastCompileReport(compileReport);
+		if (status != null) {
+			status.done(compileReport);
+		}
+		loadFilterCompileNotification(
+				configYml.getBoolean("filter-compile.notify-admins", true),
+				configYml.getString("filter-compile.notify-permission", "chatsentinel.admin"));
+		loadWarningDelivery(configYml.getBoolean("warnings.delivery.message", true),
+				configYml.getBoolean("warnings.delivery.action-bar", true));
+		getSpyModule().loadData(configYml.getBoolean("spy.enabled", true),
+				configYml.getString("spy.permission", "chatsentinel.spy"),
+				configYml.getString("spy.format", "&8[&bCS Spy&8] &e%player% &7failed &6%module% &8file=&f%source_file% &8match=&c%matched_text% &8msg=&f%message%"));
 
 		for (String lang : messagesYml.getSection("langs").getKeys()) {
 			Configuration langSection = messagesYml.getSection("langs." + lang);
@@ -41,11 +78,21 @@ public class BungeeModuleManager extends ModuleManager {
 			locales.put(lang, messages);
 		}
 
-		getCapsModule().loadData(configYml.getBoolean("caps.enabled"), configYml.getString("caps.custom-module-name"), configYml.getBoolean("caps.replace"),
-				configYml.getInt("caps.max"), configYml.getInt("caps.warn.max"),
-				configYml.getString("caps.warn.notification"),
-				configYml.getBoolean("caps.warn.webhook-notification"),
-				configYml.getStringList("caps.punishments").toArray(new String[0]));
+		String capitalizationPath = configYml.contains("capitalization") ? "capitalization" : "caps";
+		getCapitalizationModule().loadData(configYml.getBoolean(capitalizationPath + ".enabled", true),
+				configYml.getString(capitalizationPath + ".custom-module-name", "Capitalization"),
+				configYml.getBoolean(configYml.contains("capitalization") ? "capitalization.correct" : "caps.replace", true),
+				configYml.getInt(configYml.contains("capitalization") ? "capitalization.max-uppercase" : "caps.max", 8),
+				configYml.getInt(capitalizationPath + ".warn.max", -1),
+				configYml.getString(capitalizationPath + ".warn.notification", ""),
+				configYml.getBoolean(capitalizationPath + ".warn.webhook-notification", true),
+				configYml.getStringList(capitalizationPath + ".punishments").toArray(new String[0]),
+				configYml.getBoolean(capitalizationPath + ".whitelist-player-names", true),
+				configYml.getStringList(capitalizationPath + ".whitelist").toArray(new String[0]),
+				() -> ChatSentinel.getInstance().getProxy().getPlayers().stream()
+						.map(ProxiedPlayer::getName)
+						.collect(Collectors.toList()),
+				configYml.getString(capitalizationPath + ".bypass-permission", "chatsentinel.bypass.capitalization"));
 		getCooldownModule().loadData(configYml.getBoolean("cooldown.enabled"),
 				configYml.getInt("cooldown.time.repeat-global"), configYml.getInt("cooldown.time.repeat"),
 				configYml.getInt("cooldown.time.normal"), configYml.getInt("cooldown.time.command"));
@@ -55,40 +102,89 @@ public class BungeeModuleManager extends ModuleManager {
 				configYml.getBoolean("flood.warn.webhook-notification"),
 				configYml.getStringList("flood.punishments").toArray(new String[0]));
 		getMessagesModule().loadData(messagesYml.getString("default"), locales);
+		getServerMuteModule().loadData(configYml.getBoolean("server-mute.enabled", true),
+				configYml.getBoolean("server-mute.muted", false),
+				configYml.getString("server-mute.bypass-permission", "chatsentinel.mute.bypass"));
+		getNoMoveChatModule().loadData(configYml.getBoolean("no-move-chat.enabled", false),
+				configYml.getString("no-move-chat.bypass-permission", "chatsentinel.bypass.no-move-chat"),
+				configYml.getDouble("no-move-chat.min-distance-blocks", 5.0D),
+				configYml.getBoolean("no-move-chat.allow-teleport", true));
+		getChatSnapshotModule().loadData(configYml.getBoolean("chat-snapshot.enabled", true),
+				configYml.getInt("chat-snapshot.history-size", ChatSnapshotModule.DEFAULT_HISTORY_SIZE),
+				configYml.getInt("chat-snapshot.clear-lines", ChatSnapshotModule.DEFAULT_CLEAR_LINES),
+				configYml.getString("chat-snapshot.proxy-replay-format", ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT));
 		getGeneralModule().loadData(configYml.getBoolean("general.sanitize", true),
 				configYml.getBoolean("general.sanitize-names", true),
 				configYml.getBoolean("general.filter-other", false),
 				configYml.getStringList("general.commands"));
+		getAllowedCharactersModule().loadData(
+				configYml.contains("allowed-characters")
+						? configYml.getBoolean("allowed-characters.enabled", false)
+						: configYml.getBoolean("general.filter-other", false),
+				configYml.getString("allowed-characters.mode", AllowedCharactersModule.DEFAULT_MODE),
+				configYml.getString("allowed-characters.allowed-regex", AllowedCharactersModule.DEFAULT_ALLOWED_REGEX),
+				configYml.getString("allowed-characters.replacement", AllowedCharactersModule.DEFAULT_REPLACEMENT));
 		getWhitelistModule().loadData(configYml.getBoolean("whitelist.enabled"),
 				whitelistYml.getStringList("servers"),
 				whitelistYml.getStringList("expressions").toArray(new String[0]));
-		boolean censorshipEnabled = configYml.getBoolean("blacklist.censorship.enabled", false);
-		String censorshipReplacement = configYml.getString("blacklist.censorship.replacement", "***");
-		getBlacklistModule().loadData(configYml.getBoolean("blacklist.enabled"), configYml.getString("blacklist.custom-module-name"),
-				configYml.getBoolean("blacklist.fake_message"), censorshipEnabled, censorshipReplacement,
-				configYml.getInt("blacklist.warn.max"), configYml.getString("blacklist.warn.notification"),
-				configYml.getBoolean("blacklist.warn.webhook-notification"),
-				configYml.getStringList("blacklist.punishments").toArray(new String[0]),
-				blacklistYml.getStringList("expressions").toArray(new String[0]),
-				configYml.getBoolean("blacklist.block_raw_message"));
+		getBlacklistModule().loadData(
+				blacklistCompilation.getRegistry(),
+				whitelistCompilation.getRegistry(),
+				buildBlacklistSettingsRegistry(configYml));
 		getSyntaxModule().loadData(configYml.getBoolean("syntax.enabled"), configYml.getString("syntax.custom-module-name"), configYml.getInt("syntax.warn.max"),
 				configYml.getString("syntax.warn.notification"),
 				configYml.getBoolean("syntax.warn.webhook-notification"),
 				configYml.getStringList("syntax.whitelist").toArray(new String[0]),
 				configYml.getStringList("syntax.punishments").toArray(new String[0]));
 		getDiscordWebhookModule().loadData(configYml.getBoolean("discord-webhook.enabled"), configYml.getString("discord-webhook.webhook-url"),
-				configYml.getString("discord-webhook.warn.max"),
-				configYml.getString("discord-webhook.sender.avatar-url"),
 				configYml.getString("discord-webhook.sender.username"),
+				configYml.getString("discord-webhook.sender.avatar-url"),
 				configYml.getString("discord-webhook.author.name"),
 				configYml.getString("discord-webhook.author.url"),
+				configYml.getString("discord-webhook.author.icon-url"),
 				configYml.getString("discord-webhook.title"),
 				configYml.getString("discord-webhook.color"),
 				configYml.getString("discord-webhook.description"),
 				configYml.getString("discord-webhook.field-names.message"),
 				configYml.getString("discord-webhook.field-names.server"),
+				configYml.getString("discord-webhook.field-names.source-file"),
+				configYml.getString("discord-webhook.field-names.source-module"),
+				configYml.getString("discord-webhook.field-names.matched-text"),
 				configYml.getString("discord-webhook.footer.text"),
 				configYml.getString("discord-webhook.footer.icon-url"),
 				configYml.getString("discord-webhook.thumbnail-url"));
+	}
+
+	private FilterModuleSettingsRegistry buildBlacklistSettingsRegistry(Configuration configYml) {
+		FilterModuleSettings fallback = buildBlacklistSettings(configYml, "blacklist", "default", configYml.getString("blacklist.custom-module-name"));
+		Map<String, FilterModuleSettings> settingsByModuleId = new HashMap<String, FilterModuleSettings>();
+		settingsByModuleId.put(fallback.getModuleId(), fallback);
+
+		if (configYml.contains("blacklist.modules")) {
+			Configuration modulesSection = configYml.getSection("blacklist.modules");
+			for (String moduleId : modulesSection.getKeys()) {
+				settingsByModuleId.put(moduleId, buildBlacklistSettings(configYml, "blacklist.modules." + moduleId, moduleId, moduleId));
+			}
+		}
+
+		return new FilterModuleSettingsRegistry(settingsByModuleId, fallback);
+	}
+
+	private FilterModuleSettings buildBlacklistSettings(Configuration configYml, String path, String moduleId, String defaultCustomName) {
+		return FilterModuleSettings.defaultBlacklist(moduleId,
+				configYml.getBoolean(path + ".enabled", configYml.getBoolean("blacklist.enabled")),
+				configYml.getString(path + ".custom-module-name", defaultCustomName),
+				configYml.getBoolean(path + ".fake_message", configYml.getBoolean("blacklist.fake_message")),
+				configYml.getBoolean(path + ".censorship.enabled", configYml.getBoolean("blacklist.censorship.enabled", false)),
+				configYml.getString(path + ".censorship.replacement", configYml.getString("blacklist.censorship.replacement", "***")),
+				configYml.getInt(path + ".warn.max", configYml.getInt("blacklist.warn.max")),
+				configYml.getString(path + ".warn.notification", configYml.getString("blacklist.warn.notification")),
+				configYml.getBoolean(path + ".warn.webhook-notification", configYml.getBoolean("blacklist.warn.webhook-notification")),
+				getStringArray(configYml, path + ".punishments", "blacklist.punishments"),
+				configYml.getBoolean(path + ".block_raw_message", configYml.getBoolean("blacklist.block_raw_message")));
+	}
+
+	private String[] getStringArray(Configuration configYml, String path, String fallbackPath) {
+		return configYml.getStringList(configYml.contains(path) ? path : fallbackPath).toArray(new String[0]);
 	}
 }

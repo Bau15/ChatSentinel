@@ -1,5 +1,7 @@
 package dev._2lstudios.chatsentinel.bungee.listeners;
 
+import dev._2lstudios.chatsentinel.bungee.ChatSentinel;
+import dev._2lstudios.chatsentinel.bungee.platform.BungeeChatUser;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
@@ -23,11 +25,13 @@ public class PostLoginListener implements Listener {
     @EventHandler
     public void onPostLogin(PostLoginEvent event) {
         ProxiedPlayer player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BungeeChatUser(player,
+                ChatSentinel.getInstance().getMessageSink()));
 
         if (chatPlayer != null) {
             // Reset the locale of the player if already exists
             chatPlayer.setLocale(null);
+            chatPlayer.markMovementGatePassed();
 
             // Set notifications
             if (player.hasPermission("chatsentinel.notify")) {

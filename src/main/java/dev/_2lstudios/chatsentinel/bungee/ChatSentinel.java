@@ -1,204 +1,185 @@
 package dev._2lstudios.chatsentinel.bungee;
 
-import java.util.concurrent.TimeUnit;
-
 import dev._2lstudios.chatsentinel.bungee.commands.ChatSentinelCommand;
+import dev._2lstudios.chatsentinel.bungee.config.BungeeMutableModuleConfigStore;
+import dev._2lstudios.chatsentinel.bungee.filter.BungeeUserFilterWriter;
 import dev._2lstudios.chatsentinel.bungee.listeners.ChatListener;
 import dev._2lstudios.chatsentinel.bungee.listeners.PlayerDisconnectListener;
 import dev._2lstudios.chatsentinel.bungee.listeners.PostLoginListener;
 import dev._2lstudios.chatsentinel.bungee.modules.BungeeModuleManager;
+import dev._2lstudios.chatsentinel.bungee.platform.BungeeChatPlatform;
+import dev._2lstudios.chatsentinel.bungee.text.BungeeMessageSink;
 import dev._2lstudios.chatsentinel.bungee.utils.ConfigUtil;
-import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
+import dev._2lstudios.chatsentinel.shared.alerts.AlertBus;
+import dev._2lstudios.chatsentinel.shared.alerts.AlertPayload;
+import dev._2lstudios.chatsentinel.shared.alerts.LocalAlertBus;
+import dev._2lstudios.chatsentinel.shared.alerts.RedisAlertBus;
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventProcessor;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
-import dev._2lstudios.chatsentinel.shared.modules.*;
-import net.md_5.bungee.api.CommandSender;
+import dev._2lstudios.chatsentinel.shared.commands.ChatSentinelCommandService;
+import dev._2lstudios.chatsentinel.shared.filter.UserRegexAddService;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileError;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
+import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
+import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import net.md_5.bungee.api.ProxyServer;
-import net.md_5.bungee.api.connection.ProxiedPlayer;
-import net.md_5.bungee.api.connection.Server;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginManager;
+import net.md_5.bungee.config.Configuration;
+
+import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 
 public class ChatSentinel extends Plugin {
-	// Static instance
-	private static ChatSentinel instance;
+    private static ChatSentinel instance;
 
-	public static ChatSentinel getInstance() {
-		return instance;
-	}
+    private BungeeModuleManager moduleManager;
+    private ChatPlayerManager chatPlayerManager;
+    private ChatNotificationManager chatNotificationManager;
+    private BungeeMessageSink messageSink;
+    private BungeeChatPlatform chatPlatform;
+    private ChatEventProcessor chatEventProcessor;
+    private ChatSentinelCommandService commandService;
+    private AlertBus alertBus = new LocalAlertBus();
+    private String redisInstanceId;
 
-	public static void setInstance(ChatSentinel instance) {
-		ChatSentinel.instance = instance;
-	}
+    public static ChatSentinel getInstance() {
+        return instance;
+    }
 
-	// Module Manager
-	private BungeeModuleManager moduleManager;
+    public static void setInstance(final ChatSentinel instance) {
+        ChatSentinel.instance = instance;
+    }
 
-	public BungeeModuleManager getModuleManager() {
-		return moduleManager;
-	}
+    @Override
+    public void onEnable() {
+        setInstance(this);
+        final ConfigUtil configUtil = new ConfigUtil(this);
+        configUtil.create("%datafolder%/config.yml");
+        configUtil.create("%datafolder%/messages.yml");
+        configUtil.create("%datafolder%/whitelist.yml");
+        configUtil.create("%datafolder%/blacklist.yml");
 
-	@Override
-	public void onEnable() {
-		setInstance(this);
+        final ProxyServer server = getProxy();
+        moduleManager = new BungeeModuleManager(configUtil);
+        messageSink = new BungeeMessageSink(getLogger());
+        logCompileReport(moduleManager.getLastCompileReport());
+        logNoMoveChatProxyWarning();
+        final GeneralModule generalModule = moduleManager.getGeneralModule();
+        chatPlayerManager = new ChatPlayerManager();
+        chatNotificationManager = new ChatNotificationManager();
+        alertBus = createAlertBus(configUtil.get("%datafolder%/config.yml"));
+        chatPlatform = new BungeeChatPlatform(this, getProxy(), messageSink);
+        chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
+        commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
+                new UserRegexAddService(new BungeeUserFilterWriter(getDataFolder())), new BungeeMutableModuleConfigStore(this, configUtil));
 
-		ConfigUtil configUtil = new ConfigUtil(this);
+        final PluginManager pluginManager = server.getPluginManager();
+        pluginManager.registerListener(this, new ChatListener(this, moduleManager.getWhitelistModule(), chatPlayerManager));
+        pluginManager.registerListener(this, new PlayerDisconnectListener(generalModule, chatPlayerManager, chatNotificationManager));
+        pluginManager.registerListener(this, new PostLoginListener(generalModule, chatPlayerManager, chatNotificationManager));
+        pluginManager.registerCommand(this, new ChatSentinelCommand(this));
 
-		configUtil.create("%datafolder%/config.yml");
-		configUtil.create("%datafolder%/messages.yml");
-		configUtil.create("%datafolder%/whitelist.yml");
-		configUtil.create("%datafolder%/blacklist.yml");
+        getProxy().getScheduler().schedule(this, new Runnable() {
+            @Override
+            public void run() {
+                if (generalModule.needsNicknameCompile()) {
+                    generalModule.compileNicknamesPattern();
+                }
+            }
+        }, 1000L, 1000L, TimeUnit.MILLISECONDS);
+    }
 
-		ProxyServer server = getProxy();
-		moduleManager = new BungeeModuleManager(configUtil);
-		GeneralModule generalModule = moduleManager.getGeneralModule();
-		ChatPlayerManager chatPlayerManager = new ChatPlayerManager();
-		ChatNotificationManager chatNotificationManager = new ChatNotificationManager();
-		PluginManager pluginManager = server.getPluginManager();
+    @Override
+    public void onDisable() {
+        alertBus.close();
+    }
 
-		pluginManager.registerListener(this, new ChatListener(moduleManager.getWhitelistModule(), chatPlayerManager, chatNotificationManager));
-		pluginManager.registerListener(this, new PlayerDisconnectListener(generalModule, chatPlayerManager, chatNotificationManager));
-		pluginManager.registerListener(this, new PostLoginListener(generalModule, chatPlayerManager, chatNotificationManager));
+    public BungeeModuleManager getModuleManager() {
+        return moduleManager;
+    }
 
-		pluginManager.registerCommand(this, new ChatSentinelCommand(chatPlayerManager, chatNotificationManager, moduleManager, server));
+    public ChatEventProcessor getChatEventProcessor() {
+        return chatEventProcessor;
+    }
 
-		getProxy().getScheduler().schedule(this, () -> {
-			if (generalModule.needsNicknameCompile()) {
-				generalModule.compileNicknamesPattern();
-			}
-		}, 1000L, 1000L, TimeUnit.MILLISECONDS);
-	}
+    public BungeeMessageSink getMessageSink() {
+        return messageSink;
+    }
 
-	public void dispatchCommmands(ModerationModule moderationModule, ChatPlayer chatPlayer, String[][] placeholders) {
-		ProxyServer server = getProxy();
+    public ChatSentinelCommandService getCommandService() {
+        return commandService;
+    }
 
-		server.getScheduler().runAsync(this, () -> {
-			CommandSender console = server.getConsole();
+    private void logCompileReport(final FilterCompileReport report) {
+        if (report == null) {
+            return;
+        }
+        getLogger().info(FilterCompileStatus.formatSummary(report));
+        for (FilterCompileError error : report.getErrors()) {
+            getLogger().warning(FilterCompileStatus.formatError(error));
+        }
+    }
 
-			for (String command : moderationModule.getCommands(placeholders)) {
-				server.getPluginManager().dispatchCommand(console, command);
-			}
-		});
+    private void logNoMoveChatProxyWarning() {
+        if (moduleManager.getNoMoveChatModule().isEnabled()) {
+            getLogger().warning("no-move-chat.enabled is ignored on BungeeCord because proxies cannot see player movement.");
+        }
+    }
 
-		chatPlayer.clearWarns();
-	}
+    private AlertBus createAlertBus(final Configuration config) {
+        if (config == null || !config.getBoolean("redis.enabled", false)) {
+            return new LocalAlertBus();
+        }
+        redisInstanceId = config.getString("redis.instance-id", "auto");
+        if (redisInstanceId == null || redisInstanceId.trim().isEmpty() || "auto".equalsIgnoreCase(redisInstanceId)) {
+            redisInstanceId = java.util.UUID.randomUUID().toString();
+        }
+        try {
+            return new RedisAlertBus(config.getString("redis.uri", "redis://localhost:6379/0"),
+                    config.getString("redis.channel", "chatsentinel:alerts"), redisInstanceId,
+                    config.getBoolean("redis.publish-alerts", true), config.getBoolean("redis.receive-alerts", true),
+                    this::dispatchRemoteAlert, getLogger());
+        } catch (RuntimeException exception) {
+            getLogger().warning("Redis alert bus disabled: " + exception.getMessage());
+            return new LocalAlertBus();
+        }
+    }
 
-	public void dispatchNotification(ModerationModule moderationModule, String[][] placeholders, ChatNotificationManager chatNotificationManager) {
-		ProxyServer server = getProxy();
-		String notificationMessage = moderationModule.getWarnNotification(placeholders);
+    private void dispatchRemoteAlert(final AlertPayload payload) {
+        getProxy().getScheduler().runAsync(this, new Runnable() {
+            @Override
+            public void run() {
+                final String notificationMessage = payload.getNotificationMessage();
+                final String spyMessage = payload.getSpyMessage();
+                if (notificationMessage != null && !notificationMessage.isEmpty()) {
+                    for (ChatPlayer chatPlayer : chatNotificationManager.getAllPlayers()) {
+                        if (moduleManager.getSpyModule().isEnabled() && chatPlayer.isSpy()) {
+                            continue;
+                        }
+                        final Optional<ChatUser> user = chatPlatform.findUser(chatPlayer.getUniqueId());
+                        if (user.isPresent()) {
+                            user.get().sendMessage(notificationMessage);
+                        }
+                    }
+                    chatPlatform.sendConsoleMessage(notificationMessage);
+                }
 
-		if (notificationMessage != null && !notificationMessage.isEmpty()) {
-			for (ChatPlayer chatPlayer : chatNotificationManager.getAllPlayers()) {
-				ProxiedPlayer player = server.getPlayer(chatPlayer.getUniqueId());
-				if (player != null) {
-					player.sendMessage(notificationMessage);
-				}
-			}
-
-			server.getConsole().sendMessage(notificationMessage);
-		}
-	}
-
-	public String[][] getPlaceholders(ProxiedPlayer player, ChatPlayer chatPlayer, ModerationModule moderationModule, String message) {
-		String playerName = player.getName();
-		String customModuleName = moderationModule.getCustomName();
-		int warns = chatPlayer.getWarns(moderationModule);
-		int maxWarns = moderationModule.getMaxWarns();
-		float remainingTime = moduleManager.getCooldownModule().getRemainingTime(chatPlayer, message);
-		Server server = player.getServer();
-		String serverName = server != null ? server.getInfo().getName() : "";
-
-		return new String[][] {
-				{ "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%", "%server_name%" },
-				{ playerName, customModuleName, message, String.valueOf(warns), String.valueOf(maxWarns), String.valueOf(remainingTime), serverName }
-		};
-	}
-
-	public void sendWarning(String[][] placeholders, ModerationModule moderationModule, ProxiedPlayer player, String lang) {
-		String warnMessage = moduleManager.getMessagesModule().getWarnMessage(placeholders, lang, moderationModule.getName());
-
-		if (warnMessage != null && !warnMessage.isEmpty()) {
-			player.sendMessage(warnMessage);
-		}
-	}
-
-	public ChatEventResult processEvent(ChatPlayer chatPlayer, ProxiedPlayer player, String originalMessage, ChatNotificationManager chatNotificationManager) {
-		ChatEventResult finalResult = new ChatEventResult(originalMessage, false, false);
-		MessagesModule messagesModule = moduleManager.getMessagesModule();
-		String playerName = player.getName();
-		String lang = chatPlayer.getLocale();
-		ModerationModule[] moderationModulesToProcess = {
-				moduleManager.getSyntaxModule(),
-				moduleManager.getCapsModule(),
-				moduleManager.getCooldownModule(),
-				moduleManager.getFloodModule(),
-				moduleManager.getBlacklistModule()
-		};
-
-		for (ModerationModule moderationModule : moderationModulesToProcess) {
-			// Do not check annormal commands (unless syntax or cooldown)
-			boolean isCommmand = originalMessage.startsWith("/");
-			boolean isNormalCommmand = ChatSentinel.getInstance().getModuleManager().getGeneralModule()
-					.isCommand(originalMessage);
-			if (!(moderationModule instanceof SyntaxModerationModule) &&
-					!(moderationModule instanceof CooldownModerationModule) &&
-					isCommmand &&
-					!isNormalCommmand) {
-				continue;
-			}
-
-			// Get the modified message
-			String message = finalResult.getMessage();
-
-			// Check if player has bypass
-			if (player.hasPermission(moderationModule.getBypassPermission())) {
-				continue;
-			}
-
-			// Process
-			ChatEventResult result = moderationModule.processEvent(chatPlayer, messagesModule, playerName, message, lang);
-
-			// Skip result
-			if (result != null) {
-				// Add warning
-				chatPlayer.addWarn(moderationModule);
-
-				// Get placeholders
-				String[][] placeholders = ChatSentinel.getInstance().getPlaceholders(player, chatPlayer, moderationModule,
-						message);
-
-				// Send warning
-				ChatSentinel.getInstance().sendWarning(placeholders, moderationModule, player, lang);
-
-				// Send punishment comamnds
-				if (moderationModule.hasExceededWarns(chatPlayer)) {
-					ChatSentinel.getInstance().dispatchCommmands(moderationModule, chatPlayer, placeholders);
-				}
-
-				// Send admin notification
-				ChatSentinel.getInstance().dispatchNotification(moderationModule, placeholders, chatNotificationManager);
-
-				// Send discord webhook notification
-				ProxyServer server = getProxy();
-				DiscordWebhookModule discordWebhookModule = moduleManager.getDiscordWebhookModule();
-				server.getScheduler().runAsync(this, () -> discordWebhookModule.dispatchWebhookNotification(moderationModule, placeholders));
-
-				// Update message
-				finalResult.setMessage(result.getMessage());
-
-				// Update hide
-				if (result.isHide())
-					finalResult.setHide(true);
-
-				// Update cancelled
-				if (result.isCancelled()) {
-					finalResult.setCancelled(true);
-					break;
-				}
-			}
-		}
-
-		return finalResult;
-	}
+                if (moduleManager.getSpyModule().isEnabled() && spyMessage != null && !spyMessage.isEmpty()) {
+                    for (ChatPlayer chatPlayer : chatPlayerManager.getAllPlayers()) {
+                        if (!chatPlayer.isSpy()) {
+                            continue;
+                        }
+                        final Optional<ChatUser> user = chatPlatform.findUser(chatPlayer.getUniqueId());
+                        if (user.isPresent() && user.get().hasPermission(moduleManager.getSpyModule().getPermission())) {
+                            user.get().sendMessage(spyMessage);
+                        }
+                    }
+                }
+            }
+        });
+    }
 }

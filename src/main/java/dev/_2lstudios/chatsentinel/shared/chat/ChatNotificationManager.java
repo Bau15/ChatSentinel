@@ -3,7 +3,7 @@ package dev._2lstudios.chatsentinel.shared.chat;
 import java.util.*;
 
 public class ChatNotificationManager {
-    private final List<ChatPlayer> notifiedChatPlayers = new ArrayList<>();
+    private final LinkedHashSet<ChatPlayer> notifiedChatPlayers = new LinkedHashSet<>();
 
     public void addPlayer(ChatPlayer chatPlayer) {
         notifiedChatPlayers.add(chatPlayer);
@@ -18,6 +18,6 @@ public class ChatNotificationManager {
     }
 
     public List<ChatPlayer> getAllPlayers() {
-        return notifiedChatPlayers;
+        return Collections.unmodifiableList(new ArrayList<>(notifiedChatPlayers));
     }
 }
