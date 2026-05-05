@@ -3,6 +3,55 @@
 whitelist:
   enabled: true
 
+filter-compile:
+  notify-admins: true
+  notify-permission: "chatsentinel.admin"
+
+warnings:
+  delivery:
+    message: true
+    action-bar: true
+
+redis:
+  enabled: false
+  uri: "redis://localhost:6379/0"
+  channel: "chatsentinel:alerts"
+  instance-id: "auto"
+  publish-alerts: true
+  receive-alerts: true
+
+velocity:
+  # legacy-deny can block/modify chat on Velocity but may kick 1.19.1+ signed-chat clients.
+  # warn-only only sends notifications, webhooks, and spy alerts without changing the chat event.
+  signed-chat-policy: "legacy-deny"
+  signed-chat-warning-on-startup: true
+
+spy:
+  enabled: true
+  permission: "chatsentinel.spy"
+  format: "&8[&bCS Spy&8] &e%player% &7failed &6%module% &8file=&f%source_file% &8match=&c%matched_text% &8msg=&f%message%"
+
+server-mute:
+  enabled: true
+  muted: false
+  bypass-permission: "chatsentinel.mute.bypass"
+
+no-move-chat:
+  # Bukkit backend only. BungeeCord/Velocity cannot observe player movement.
+  # Player may chat after moving this many blocks from join location, or after teleport if allow-teleport is true.
+  enabled: false
+  bypass-permission: "chatsentinel.bypass.no-move-chat"
+  min-distance-blocks: 5.0
+  allow-teleport: true
+
+# Stores recent visible chat lines for smart clear/delete replay.
+# Bukkit uses event chat format when available. BungeeCord/Velocity use proxy-replay-format.
+chat-snapshot:
+  enabled: true
+  history-size: 40
+  clear-lines: 128
+  proxy-replay-format: "&7[%player%] &f%message%"
+
 general:
   # If enabled, other checks will ignore non-latin characters to improve detection.
   sanitize: true
@@ -29,6 +78,14 @@ general:
     - /er
     - /global
     - /g
+
+# Replaces or blocks characters outside the allowed regex.
+# If this section is missing, general.filter-other: true enables this module with these defaults.
+allowed-characters:
+  enabled: false
+  mode: "replace"
+  allowed-regex: "[A-Za-z0-9 _.,!?@#:/;\\-()\\[\\]{}'\"]"
+  replacement: ""
 
 # Checks if the player is using blacklisted words.
 blacklist:
@@ -70,18 +127,43 @@ blacklist:
   # The message will be cancelled.
   block_raw_message: true
 
-# Checks if messages have too many caps.
-caps:
+  # Per-folder blacklist modules. The first folder under blacklist/ is the module id.
+  modules:
+    security:
+      enabled: true
+      custom-module-name: "Security"
+    advertisement:
+      enabled: true
+      custom-module-name: "Advertising"
+    offense:
+      enabled: true
+      custom-module-name: "Offense"
+    user:
+      enabled: true
+      custom-module-name: "Custom"
+
+# Corrects excessive capitalization in player messages.
+capitalization:
   enabled: true
 
   # Custom module name.
-  custom-module-name: "Caps"
+  custom-module-name: "Capitalization"
 
-  # If this is true it will replace the caps with low-case letters.
-  replace: true
+  # If this is true it will correct excessive uppercase with lowercase text.
+  correct: true
 
-  # Maximum amount of caps allowed.
-  max: 8
+  # Maximum amount of uppercase letters allowed.
+  max-uppercase: 8
+
+  bypass-permission: "chatsentinel.bypass.capitalization"
+
+  # If enabled, online player names are ignored by the capitalization check.
+  whitelist-player-names: true
+
+  # Tokens ignored by the capitalization check before counting uppercase letters.
+  whitelist:
+    - "USA"
+    - "VIP"
 
   warn:
     # Amount of warns required to execute the commands.
@@ -210,6 +292,15 @@ discord-webhook:
 
     # Server field name.
     server: "Server"
+
+    # Source file field name.
+    source-file: "Source File"
+
+    # Source module field name.
+    source-module: "Source Module"
+
+    # Matched text field name.
+    matched-text: "Matched Text"
 
   footer:
     # Footer text.

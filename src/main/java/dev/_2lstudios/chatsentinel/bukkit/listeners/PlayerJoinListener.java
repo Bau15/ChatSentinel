@@ -1,9 +1,12 @@
 package dev._2lstudios.chatsentinel.bukkit.listeners;
 
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
+import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
+import dev._2lstudios.chatsentinel.bukkit.platform.BukkitChatUser;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
+import org.bukkit.Location;
 import org.bukkit.event.player.PlayerJoinEvent;
 
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
@@ -24,11 +27,16 @@ public class PlayerJoinListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BukkitChatUser(ChatSentinel.getInstance(), player,
+                ChatSentinel.getInstance().getMessageSink()));
 
         if (chatPlayer != null) {
             // Reset the locale of the player if already exists
             chatPlayer.setLocale(null);
+
+            Location location = player.getLocation();
+            chatPlayer.resetMovementGate(location.getWorld() == null ? "" : location.getWorld().getName(),
+                    location.getX(), location.getY(), location.getZ());
 
             // Set notifications
             if (player.hasPermission("chatsentinel.notify")) {

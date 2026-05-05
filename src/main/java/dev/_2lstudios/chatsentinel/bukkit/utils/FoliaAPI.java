@@ -4,7 +4,7 @@ import java.lang.reflect.Method;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Consumer;
 import org.bukkit.Bukkit;
 import org.bukkit.Location;
@@ -19,6 +19,7 @@ public class FoliaAPI {
     private static final BukkitScheduler bS = Bukkit.getScheduler();
     private static final Object globalRegionScheduler = getGlobalRegionScheduler();
     private static final Object regionScheduler = getRegionScheduler();
+    private static final Object asyncScheduler = getAsyncScheduler();
 
     static { cacheMethods(); }
     private static Method getMethod(Class<?> clazz, String methodName, Class<?>... parameterTypes) { try { return clazz.getMethod(methodName, parameterTypes); } catch (Exception e) { return null; } }
@@ -33,6 +34,27 @@ public class FoliaAPI {
             Method runMethod = getMethod(globalRegionScheduler.getClass(), "run", Plugin.class, Consumer.class);
             if (runMethod != null) {
                 cachedMethods.put("globalRegionScheduler.run", runMethod);
+            }
+
+            Method runDelayedMethod = getMethod(globalRegionScheduler.getClass(), "runDelayed", Plugin.class, Consumer.class, long.class);
+            if (runDelayedMethod != null) {
+                cachedMethods.put("globalRegionScheduler.runDelayed", runDelayedMethod);
+            }
+        }
+        if (asyncScheduler != null) {
+            Method runNowMethod = getMethod(asyncScheduler.getClass(), "runNow", Plugin.class, Consumer.class);
+            if (runNowMethod != null) {
+                cachedMethods.put("asyncScheduler.runNow", runNowMethod);
+            }
+
+            Method runDelayedMethod = getMethod(asyncScheduler.getClass(), "runDelayed", Plugin.class, Consumer.class, long.class, TimeUnit.class);
+            if (runDelayedMethod != null) {
+                cachedMethods.put("asyncScheduler.runDelayed", runDelayedMethod);
+            }
+
+            Method runAtFixedRateMethod = getMethod(asyncScheduler.getClass(), "runAtFixedRate", Plugin.class, Consumer.class, long.class, long.class, TimeUnit.class);
+            if (runAtFixedRateMethod != null) {
+                cachedMethods.put("asyncScheduler.runAtFixedRate", runAtFixedRateMethod);
             }
         }
         if (regionScheduler != null) {
@@ -100,10 +122,15 @@ public class FoliaAPI {
         return invokeMethod(method, Bukkit.getServer());
     }
 
+    private static Object getAsyncScheduler() {
+        Method method = getMethod(Server.class, "getAsyncScheduler");
+        return invokeMethod(method, Bukkit.getServer());
+    }
+
     public static boolean isFolia() {
         try {
             Class.forName("io.papermc.paper.threadedregions.RegionizedServer");
-            return globalRegionScheduler != null && regionScheduler != null;
+            return globalRegionScheduler != null && regionScheduler != null && asyncScheduler != null;
         } catch (Exception ig) {
             return false;
         }
@@ -114,7 +141,15 @@ public class FoliaAPI {
             bS.runTaskLaterAsynchronously(pl, run, delay);
             return;
         }
-        Executors.defaultThreadFactory().newThread(run).start();
+        Consumer<Object> task = ignored -> run.run();
+        if (delay <= 0L) {
+            Method method = cachedMethods.get("asyncScheduler.runNow");
+            invokeMethod(method, asyncScheduler, pl, task);
+            return;
+        }
+
+        Method method = cachedMethods.get("asyncScheduler.runDelayed");
+        invokeMethod(method, asyncScheduler, pl, task, delay * 50L, TimeUnit.MILLISECONDS);
     }
 
     public static void runTaskAsync(Plugin pl, Runnable run) { runTaskAsync(pl, run, 1L); }
@@ -124,8 +159,8 @@ public class FoliaAPI {
             bS.runTaskTimerAsynchronously(pl, () -> run.accept(null), delay, period);
             return;
         }
-        Method method = cachedMethods.get("globalRegionScheduler.runAtFixedRate");
-        invokeMethod(method, globalRegionScheduler, pl, run, delay, period);
+        Method method = cachedMethods.get("asyncScheduler.runAtFixedRate");
+        invokeMethod(method, asyncScheduler, pl, run, delay * 50L, period * 50L, TimeUnit.MILLISECONDS);
     }
 
     public static void runTaskTimer(Plugin pl, Consumer<Object> run, long delay, long period) {
@@ -151,8 +186,8 @@ public class FoliaAPI {
             bS.runTaskLater(pl, run, delay);
             return;
         }
-        Method method = cachedMethods.get("globalRegionScheduler.run");
-        invokeMethod(method, globalRegionScheduler, pl, (Consumer<Object>) ignored -> run.run());
+        Method method = cachedMethods.get("globalRegionScheduler.runDelayed");
+        invokeMethod(method, globalRegionScheduler, pl, (Consumer<Object>) ignored -> run.run(), delay);
     }
 
     public static void runTask(Plugin pl, Consumer<Object> run) {
@@ -175,11 +210,15 @@ public class FoliaAPI {
                 Method runMethod = getMethod(entityScheduler != null ? entityScheduler.getClass() : null, "run", Plugin.class, Consumer.class, Runnable.class);
 
                 invokeMethod(runMethod, entityScheduler, plugin, (Consumer<Object>) scheduledTask -> task.run(), null);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                plugin.getLogger().warning("Unable to run Folia entity task: " + e.getMessage());
+            }
         } else {
             try {
                 bS.runTask(plugin, task);
-            } catch (Exception e) {}
+            } catch (Exception e) {
+                plugin.getLogger().warning("Unable to run Bukkit entity task: " + e.getMessage());
+            }
         }
     }
 

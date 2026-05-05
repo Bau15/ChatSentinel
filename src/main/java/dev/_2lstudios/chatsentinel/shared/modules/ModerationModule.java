@@ -1,5 +1,7 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
+import java.util.Locale;
+
 import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.utils.PlaceholderUtil;
@@ -53,6 +55,10 @@ public abstract class ModerationModule {
     }
 
     public abstract String getName();
+
+    public String getIdentityKey() {
+        return getName().toLowerCase(Locale.ROOT);
+    }
 
     public String getCustomName() {
         return customName;

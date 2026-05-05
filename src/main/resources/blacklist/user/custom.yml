@@ -1,0 +1,2 @@
+# This plugin uses Regex for checking messages.
+expressions: []

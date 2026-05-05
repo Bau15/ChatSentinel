@@ -1,14 +1,21 @@
 package dev._2lstudios.chatsentinel.shared.chat;
 
+import java.util.Objects;
+import java.util.Optional;
+
+import dev._2lstudios.chatsentinel.shared.moderation.ModerationViolation;
+
 public class ChatEventResult {
     private String message;
     private boolean cancelled;
     private boolean hide;
+    private Optional<ModerationViolation> violation;
 
     public ChatEventResult(String message, boolean cancelled, boolean hide) {
         this.message = message;
         this.cancelled = cancelled;
         this.hide = hide;
+        this.violation = Optional.empty();
     }
 
     public ChatEventResult(String message, boolean cancelled) {
@@ -37,5 +44,13 @@ public class ChatEventResult {
 
     public void setHide(boolean hide) {
         this.hide = hide;
+    }
+
+    public Optional<ModerationViolation> getViolation() {
+        return violation;
+    }
+
+    public void setViolation(ModerationViolation violation) {
+        this.violation = Optional.of(Objects.requireNonNull(violation, "violation"));
     }
 }

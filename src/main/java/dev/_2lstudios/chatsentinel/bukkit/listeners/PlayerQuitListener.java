@@ -3,6 +3,8 @@ package dev._2lstudios.chatsentinel.bukkit.listeners;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
+import dev._2lstudios.chatsentinel.bukkit.platform.BukkitChatUser;
 import org.bukkit.entity.Player;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.Listener;
@@ -25,7 +27,8 @@ public class PlayerQuitListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         generalModule.removeNickname(event.getPlayer().getName());
         Player player = event.getPlayer();
-        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(player);
+        ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BukkitChatUser(ChatSentinel.getInstance(), player,
+                ChatSentinel.getInstance().getMessageSink()));
 
         if (chatPlayer != null && chatNotificationManager.containsPlayer(chatPlayer)) {
             chatNotificationManager.removePlayer(chatPlayer);

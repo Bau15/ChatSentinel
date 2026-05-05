@@ -9,14 +9,22 @@ import java.util.UUID;
 import dev._2lstudios.chatsentinel.shared.modules.ModerationModule;
 
 public class ChatPlayer {
-    private int historySize = 3;
-    private UUID uuid;
-    private Map<ModerationModule, Integer> warns;
-    private Deque<String> lastMessages;
+    private final int historySize = 3;
+    private final UUID uuid;
+    private final Map<String, Integer> warns;
+    private final Deque<String> lastMessages;
     private String locale = null;
     private long lastMessageTime;
     private long lastCommandTime;
     private boolean notify = false;
+    private boolean movedSinceJoin;
+    private boolean movementGatePassed;
+    private boolean movementGateHasOrigin;
+    private String movementGateWorld;
+    private double movementGateX;
+    private double movementGateY;
+    private double movementGateZ;
+    private boolean spy;
 
     public ChatPlayer(UUID uuid) {
         this.uuid = uuid;
@@ -26,37 +34,44 @@ public class ChatPlayer {
         this.lastCommandTime = 0;
     }
 
-    public int getWarns(ModerationModule moderationModule) {
-        return this.warns.getOrDefault(moderationModule, 0);
+    public synchronized int getWarns(ModerationModule moderationModule) {
+        return getWarns(moderationModule.getIdentityKey());
     }
 
-    public int addWarn(ModerationModule moderationModule) {
-        int warns = this.warns.getOrDefault(moderationModule, 0) + 1;
+    public synchronized int addWarn(ModerationModule moderationModule) {
+        return addWarn(moderationModule.getIdentityKey());
+    }
 
-        this.warns.put(moderationModule, warns);
+    public synchronized int getWarns(String identityKey) {
+        return this.warns.getOrDefault(identityKey, 0);
+    }
+
+    public synchronized int addWarn(String identityKey) {
+        int warns = this.warns.getOrDefault(identityKey, 0) + 1;
+
+        this.warns.put(identityKey, warns);
 
         return warns;
     }
 
-    public String removeDigits(String str) {
-        // Converting the given string
-        // into a character array
-        char[] charArray = str.toCharArray();
-        String result = "";
+    public synchronized void clearWarns(String identityKey) {
+        this.warns.remove(identityKey);
+    }
 
-        // Traverse the character array
-        for (int i = 0; i < charArray.length; i++) {
-            // Check if the specified character is not digit
-            // then add this character into result variable
-            if (!Character.isDigit(charArray[i])) {
-                result = result + charArray[i];
+    public String removeDigits(String str) {
+        StringBuilder result = new StringBuilder(str.length());
+
+        for (int i = 0; i < str.length(); i++) {
+            char character = str.charAt(i);
+            if (!Character.isDigit(character)) {
+                result.append(character);
             }
         }
 
-        return result;
+        return result.toString();
     }
 
-    public boolean isLastMessage(String message) {
+    public synchronized boolean isLastMessage(String message) {
         // Check if message is null
         if (message != null) {
             // Remove digits from message
@@ -81,27 +96,27 @@ public class ChatPlayer {
         return false;
     }
 
-    public long getLastMessageTime() {
+    public synchronized long getLastMessageTime() {
         return this.lastMessageTime;
     }
 
-    public long getLastCommandTime() {
+    public synchronized long getLastCommandTime() {
         return this.lastCommandTime;
     }
 
-    public void addLastMessage(String lastMessage, long lastMessageTime) {
-        if (lastMessages.size() > historySize) {
+    public synchronized void addLastMessage(String lastMessage, long lastMessageTime) {
+        if (lastMessages.size() >= historySize) {
             lastMessages.removeLast();
         }
         lastMessages.offerFirst(removeDigits(lastMessage));
         this.lastMessageTime = lastMessageTime;
     }
 
-    public void addLastCommand(long lastCommandTime) {
+    public synchronized void addLastCommand(long lastCommandTime) {
         this.lastCommandTime = lastCommandTime;
     }
 
-    public void clearWarns() {
+    public synchronized void clearWarns() {
         this.warns.clear();
     }
 
@@ -109,23 +124,87 @@ public class ChatPlayer {
         return uuid;
     }
 
-    public String getLocale() {
+    public synchronized String getLocale() {
         return hasLocale() ? locale : "en";
     }
 
-    public void setLocale(String locale) {
+    public synchronized void setLocale(String locale) {
         this.locale = locale;
     }
 
-    public boolean hasLocale() {
+    public synchronized boolean hasLocale() {
         return this.locale != null;
     }
 
-    public void setNotify(boolean notify) {
+    public synchronized void setNotify(boolean notify) {
         this.notify = notify;
     }
 
-    public boolean isNotify() {
+    public synchronized boolean isNotify() {
         return notify;
+    }
+
+    public synchronized boolean isMovedSinceJoin() {
+        return movedSinceJoin;
+    }
+
+    public synchronized void setMovedSinceJoin(boolean movedSinceJoin) {
+        if (movedSinceJoin) {
+            markMovementGatePassed();
+            return;
+        }
+        this.movedSinceJoin = false;
+        this.movementGatePassed = false;
+    }
+
+    public synchronized void resetMovementGate(final String world, final double x, final double y, final double z) {
+        this.movementGateWorld = world == null ? "" : world;
+        this.movementGateX = x;
+        this.movementGateY = y;
+        this.movementGateZ = z;
+        this.movementGateHasOrigin = true;
+        this.movementGatePassed = false;
+        this.movedSinceJoin = false;
+    }
+
+    public synchronized void markMovementGatePassed() {
+        this.movementGatePassed = true;
+        this.movedSinceJoin = true;
+    }
+
+    public synchronized boolean observeMovement(final String world, final double x, final double y, final double z,
+            final double minDistanceSquared) {
+        if (movementGatePassed) {
+            return true;
+        }
+        if (!movementGateHasOrigin) {
+            resetMovementGate(world, x, y, z);
+            return false;
+        }
+        final String currentWorld = world == null ? "" : world;
+        if (!currentWorld.equals(movementGateWorld)) {
+            markMovementGatePassed();
+            return true;
+        }
+        final double dx = x - movementGateX;
+        final double dy = y - movementGateY;
+        final double dz = z - movementGateZ;
+        if ((dx * dx) + (dy * dy) + (dz * dz) >= minDistanceSquared) {
+            markMovementGatePassed();
+            return true;
+        }
+        return false;
+    }
+
+    public synchronized boolean hasMovementGatePassed() {
+        return movementGatePassed || movedSinceJoin;
+    }
+
+    public synchronized boolean isSpy() {
+        return spy;
+    }
+
+    public synchronized void setSpy(boolean spy) {
+        this.spy = spy;
     }
 }

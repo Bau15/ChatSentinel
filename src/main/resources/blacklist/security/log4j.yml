@@ -1,0 +1,5 @@
+# This plugin uses Regex for checking messages.
+expressions:
+  - '(?i)\$\s*\{\s*j\s*n\s*d\s*i\s*:'
+  - '(?i)\$\s*\{\s*lower\s*:'
+  - '(?i)\$\s*\{\s*upper\s*:'
