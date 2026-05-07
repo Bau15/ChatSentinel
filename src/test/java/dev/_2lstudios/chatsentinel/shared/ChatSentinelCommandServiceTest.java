@@ -13,6 +13,7 @@ import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.platform.CommandActor;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyService;
 import dev._2lstudios.chatsentinel.shared.text.WarningDeliverySettings;
 import org.junit.Test;
 
@@ -131,8 +132,9 @@ public class ChatSentinelCommandServiceTest {
 
     private static ChatSentinelCommandService service(TestModuleManager modules, ChatPlatform platform,
             MutableModuleConfigStore store, UserFilterWriter writer) {
-        return new ChatSentinelCommandService(modules, new ChatPlayerManager(), new ChatNotificationManager(), platform,
-                new UserRegexAddService(writer), store);
+        final ChatPlayerManager chatPlayerManager = new ChatPlayerManager();
+        return new ChatSentinelCommandService(modules, chatPlayerManager, new ChatNotificationManager(), platform,
+                new UserRegexAddService(writer), store, new SocialSpyService(modules, chatPlayerManager, platform));
     }
 
     private static TestModuleManager modules() {

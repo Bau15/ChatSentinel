@@ -31,6 +31,88 @@ spy:
   permission: "chatsentinel.spy"
   format: "&8[&bCS Spy&8] &e%player% &7failed &6%module% &8file=&f%source_file% &8match=&c%matched_text% &8msg=&f%message%"
 
+social-spy:
+  enabled: true
+  root-permission: "chatsentinel.socialspy"
+  include-self: false
+  show-server: true
+  unavailable-platform-message: "&cThis SocialSpy module is not available on this platform."
+  invalid-module-message: "&cUnknown SocialSpy module. Available: &f%modules%"
+  enabled-message: "&aSocialSpy enabled for &f%module%&a."
+  disabled-message: "&cSocialSpy disabled for &f%module%&c."
+  enabled-all-message: "&aSocialSpy enabled for all permitted modules."
+  disabled-all-message: "&cSocialSpy disabled for all permitted modules."
+  status-header: "&eSocialSpy status:"
+  status-line: "&7- &f%module%&7: %state%"
+  state-enabled: "&aenabled"
+  state-disabled: "&cdisabled"
+  no-permission: "&cYou do not have permission to use this SocialSpy module."
+
+  trim:
+    command-content-chars: 160
+    message-content-chars: 160
+    sign-line-chars: 80
+    book-title-chars: 40
+    book-content-chars: 50
+    append-ellipsis: "..."
+
+  modules:
+    messages:
+      enabled: true
+      default-enabled: true
+      permission: "chatsentinel.socialspy.messages"
+      format: "&8[&dSpy&8] &e%player% &7messaged &f%target%&8: &f%message%"
+    signs:
+      enabled: true
+      default-enabled: true
+      permission: "chatsentinel.socialspy.signs"
+      format: "&8[&dSpy&8] &e%player% &7placed/edited sign at &f%world% %x% %y% %z%&8: &f%content%"
+    books:
+      enabled: true
+      default-enabled: true
+      permission: "chatsentinel.socialspy.books"
+      format: "&8[&dSpy&8] &e%player% &7wrote a book &f%title%&8: &f%content%"
+    commands:
+      enabled: true
+      default-enabled: false
+      permission: "chatsentinel.socialspy.commands"
+      format: "&8[&dSpy&8] &e%player% &7ran command&8: &f/%command%"
+
+  # Private-message commands. These are treated as SocialSpy messages, not generic commands.
+  # Format: command:targetArgIndex:messageStartArgIndex
+  # Use targetArgIndex -1 for reply-style commands with no explicit target.
+  message-command-patterns:
+    - "msg:1:2"
+    - "tell:1:2"
+    - "w:1:2"
+    - "whisper:1:2"
+    - "pm:1:2"
+    - "m:1:2"
+    - "message:1:2"
+    - "t:1:2"
+    - "reply:-1:1"
+    - "r:-1:1"
+
+  # Never spy sensitive authentication/password commands by default.
+  ignored-command-roots:
+    - "login"
+    - "l"
+    - "register"
+    - "reg"
+    - "changepassword"
+    - "cp"
+    - "email"
+    - "2fa"
+    - "captcha"
+    - "chatsentinel"
+    - "socialspy"
+    - "sspy"
+    - "autocorrect"
+    - "correction"
+    - "servermute"
+    - "muteall"
+    - "muteserver"
+
 server-mute:
   enabled: true
   muted: false

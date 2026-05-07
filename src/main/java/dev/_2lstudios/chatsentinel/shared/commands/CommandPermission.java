@@ -15,6 +15,11 @@ public final class CommandPermission {
     public static final String DELETE_LIST = "chatsentinel.delete";
     public static final String AUTOCORRECT = "chatsentinel.autocorrect";
     public static final String SELFTEST = "chatsentinel.admin";
+    public static final String SOCIALSPY = "chatsentinel.socialspy";
+    public static final String SOCIALSPY_MESSAGES = "chatsentinel.socialspy.messages";
+    public static final String SOCIALSPY_SIGNS = "chatsentinel.socialspy.signs";
+    public static final String SOCIALSPY_BOOKS = "chatsentinel.socialspy.books";
+    public static final String SOCIALSPY_COMMANDS = "chatsentinel.socialspy.commands";
 
     private CommandPermission() {
     }
