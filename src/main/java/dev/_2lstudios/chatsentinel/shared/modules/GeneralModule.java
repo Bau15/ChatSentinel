@@ -13,8 +13,8 @@ import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
 
 public class GeneralModule {
 	private Pattern nonAlphaNumericPattern = Pattern.compile("[^a-zA-Z0-9]");
-	private Pattern nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
-	private Collection<String> nicknames = new HashSet<>();
+	private volatile Pattern nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
+	private final Set<String> nicknames = Collections.synchronizedSet(new HashSet<String>());
 	private Collection<String> commands;
 	private boolean sanitize;
 	private boolean sanitizeNames;
@@ -82,23 +82,24 @@ public class GeneralModule {
 		return nonAlphaNumericPattern.matcher(text).replaceAll("");
 	}
 
-	private boolean needsNicknameCompile = false;
+	private volatile boolean needsNicknameCompile = false;
 
-	public boolean needsNicknameCompile() {
+	public synchronized boolean needsNicknameCompile() {
 		return needsNicknameCompile;
 	}
 
-	public void compileNicknamesPattern() {
+	public synchronized void compileNicknamesPattern() {
 		needsNicknameCompile = false;
 
-		if (nicknames.isEmpty()) {
+		final Collection<String> nicknameSnapshot = new HashSet<String>(nicknames);
+		if (nicknameSnapshot.isEmpty()) {
 			nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
 			return;
 		}
 
-		Collection<String> quotedNicknames = new HashSet<>();
+		Collection<String> quotedNicknames = new HashSet<String>();
 
-		for (String nickname : nicknames) {
+		for (String nickname : nicknameSnapshot) {
 			quotedNicknames.add(Pattern.quote(nickname));
 		}
 
@@ -109,7 +110,7 @@ public class GeneralModule {
 		return nicknamesPattern;
 	}
 
-	public void addNickname(String nickname) {
+	public synchronized void addNickname(String nickname) {
 		// Remove alphanumeric to avoid errors
 		nicknames.add(removeNonAlphanumeric(nickname));
 
@@ -117,7 +118,7 @@ public class GeneralModule {
 		needsNicknameCompile = true;
 	}
 
-	public void removeNickname(String nickname) {
+	public synchronized void removeNickname(String nickname) {
 		// Remove alphanumeric to avoid errors
 		nicknames.remove(removeNonAlphanumeric(nickname));
 		

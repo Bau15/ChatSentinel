@@ -6,12 +6,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 
 import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
 import dev._2lstudios.chatsentinel.bukkit.filter.BukkitFilterFileLoader;
@@ -109,9 +107,7 @@ public class BukkitModuleManager extends ModuleManager {
 				configYml.getStringList(capitalizationPath + ".punishments").toArray(new String[0]),
 				configYml.getBoolean(capitalizationPath + ".whitelist-player-names", true),
 				configYml.getStringList(capitalizationPath + ".whitelist").toArray(new String[0]),
-				() -> ChatSentinel.getInstance().getServer().getOnlinePlayers().stream()
-						.map(Player::getName)
-						.collect(Collectors.toList()),
+				() -> ChatSentinel.getInstance().getChatPlatform().getOnlinePlayerNamesSnapshot(),
 				configYml.getString(capitalizationPath + ".bypass-permission", ""));
 		getCooldownModule().loadData(configYml.getBoolean("cooldown.enabled"),
 				configYml.getInt("cooldown.time.repeat-global"), configYml.getInt("cooldown.time.repeat"),
@@ -157,9 +153,7 @@ public class BukkitModuleManager extends ModuleManager {
 				configYml.getString("correction.bypass-permission", ""),
 				readStringMap(configYml.getConfigurationSection("correction.replacements")),
 				configYml.getStringList("correction.ignored-words"),
-				() -> ChatSentinel.getInstance().getServer().getOnlinePlayers().stream()
-						.map(Player::getName)
-						.collect(Collectors.toList()));
+				() -> ChatSentinel.getInstance().getChatPlatform().getOnlinePlayerNamesSnapshot());
 		getWhitelistModule().loadData(configYml.getBoolean("whitelist.enabled"),
 				whitelistYml.getStringList("expressions").toArray(new String[0]));
 		getBlacklistModule().loadData(blacklistCompilation.getRegistry(), activeWhitelistCompilation.getRegistry(), blacklistSettingsRegistry);

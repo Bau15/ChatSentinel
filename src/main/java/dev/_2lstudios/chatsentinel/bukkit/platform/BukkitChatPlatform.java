@@ -10,7 +10,6 @@ import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.text.LegacyText;
-import org.bukkit.Bukkit;
 import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
@@ -18,13 +17,17 @@ import org.bukkit.entity.Player;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 
 public final class BukkitChatPlatform implements ChatPlatform {
     private final ChatSentinel plugin;
     private final Server server;
     private final BukkitMessageSink messageSink;
+    private final Map<UUID, Player> onlinePlayers = new ConcurrentHashMap<UUID, Player>();
+    private final Map<UUID, String> onlinePlayerNames = new ConcurrentHashMap<UUID, String>();
 
     public BukkitChatPlatform(final ChatSentinel plugin, final Server server, final BukkitMessageSink messageSink) {
         this.plugin = plugin;
@@ -32,10 +35,30 @@ public final class BukkitChatPlatform implements ChatPlatform {
         this.messageSink = messageSink;
     }
 
+    public void trackPlayer(final Player player) {
+        if (player == null) {
+            return;
+        }
+        onlinePlayers.put(player.getUniqueId(), player);
+        onlinePlayerNames.put(player.getUniqueId(), player.getName());
+    }
+
+    public void untrackPlayer(final UUID uniqueId) {
+        if (uniqueId == null) {
+            return;
+        }
+        onlinePlayers.remove(uniqueId);
+        onlinePlayerNames.remove(uniqueId);
+    }
+
+    public Collection<String> getOnlinePlayerNamesSnapshot() {
+        return new ArrayList<String>(onlinePlayerNames.values());
+    }
+
     @Override
     public Collection<ChatUser> getOnlineUsers() {
         final List<ChatUser> users = new ArrayList<ChatUser>();
-        for (Player player : server.getOnlinePlayers()) {
+        for (Player player : onlinePlayers.values()) {
             users.add(new BukkitChatUser(plugin, player, messageSink));
         }
         return users;
@@ -43,7 +66,7 @@ public final class BukkitChatPlatform implements ChatPlatform {
 
     @Override
     public Optional<ChatUser> findUser(final UUID uniqueId) {
-        final Player player = Bukkit.getPlayer(uniqueId);
+        final Player player = onlinePlayers.get(uniqueId);
         return player == null ? Optional.<ChatUser>empty() : Optional.<ChatUser>of(new BukkitChatUser(plugin, player, messageSink));
     }
 
@@ -84,6 +107,7 @@ public final class BukkitChatPlatform implements ChatPlatform {
             final ChatNotificationManager chatNotificationManager,
             final GeneralModule generalModule) {
         for (Player player : server.getOnlinePlayers()) {
+            trackPlayer(player);
             final BukkitChatUser user = new BukkitChatUser(plugin, player, messageSink);
             final ChatPlayer chatPlayer = chatPlayerManager.getPlayer(user);
             chatPlayer.setLocale(null);

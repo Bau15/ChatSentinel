@@ -60,6 +60,7 @@ public class ChatSentinel extends JavaPlugin {
     @Override
     public void onEnable() {
         setInstance(this);
+        FoliaAPI.init(this);
 
         final ConfigUtil configUtil = new ConfigUtil(this);
         final Server server = getServer();
@@ -101,6 +102,9 @@ public class ChatSentinel extends JavaPlugin {
     @Override
     public void onDisable() {
         alertBus.close();
+        FoliaAPI.cancelAllTasks(this);
+        FoliaAPI.reset();
+        setInstance(null);
     }
 
     public BukkitModuleManager getModuleManager() {
@@ -113,6 +117,10 @@ public class ChatSentinel extends JavaPlugin {
 
     public BukkitMessageSink getMessageSink() {
         return messageSink;
+    }
+
+    public BukkitChatPlatform getChatPlatform() {
+        return chatPlatform;
     }
 
     public ChatEventProcessor getChatEventProcessor() {

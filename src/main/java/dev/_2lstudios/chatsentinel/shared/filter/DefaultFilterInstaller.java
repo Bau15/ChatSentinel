@@ -13,7 +13,7 @@ import java.util.List;
 import java.util.function.Consumer;
 
 public final class DefaultFilterInstaller {
-    public static final String CURRENT_VERSION = "2026-05-06-offense-v2";
+    public static final String CURRENT_VERSION = "2026-05-06-offense-v3";
 
     private static final List<String> MANAGED_RESOURCES = Arrays.asList(
             "blacklist/advertisement/domains.yml",
