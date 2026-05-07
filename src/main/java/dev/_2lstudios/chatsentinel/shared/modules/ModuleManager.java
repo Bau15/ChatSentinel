@@ -18,6 +18,7 @@ public abstract class ModuleManager {
 	private ChatSnapshotModule chatSnapshotModule;
 	private ServerMuteModule serverMuteModule;
 	private SpyModule spyModule;
+	private SocialSpyModule socialSpyModule;
 	private NoMoveChatModule noMoveChatModule;
 	private CorrectionModule correctionModule;
 	private FilterCompileReport lastCompileReport;
@@ -38,6 +39,7 @@ public abstract class ModuleManager {
 		this.discordWebhookModule = new DiscordWebhookModule();
 		this.chatSnapshotModule = new ChatSnapshotModule();
 		this.spyModule = new SpyModule();
+		this.socialSpyModule = new SocialSpyModule();
 		this.serverMuteModule = new ServerMuteModule();
 		this.noMoveChatModule = new NoMoveChatModule();
 		this.correctionModule = new CorrectionModule();
@@ -93,6 +95,10 @@ public abstract class ModuleManager {
 
 	public SpyModule getSpyModule() {
 		return spyModule;
+	}
+
+	public SocialSpyModule getSocialSpyModule() {
+		return socialSpyModule;
 	}
 
 	public NoMoveChatModule getNoMoveChatModule() {

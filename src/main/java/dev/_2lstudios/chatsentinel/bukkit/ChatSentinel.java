@@ -9,6 +9,8 @@ import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerMoveListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerQuitListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerTeleportListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.ServerCommandListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.SocialSpyBookListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.SocialSpySignListener;
 import dev._2lstudios.chatsentinel.bukkit.modules.BukkitModuleManager;
 import dev._2lstudios.chatsentinel.bukkit.platform.BukkitChatPlatform;
 import dev._2lstudios.chatsentinel.bukkit.text.BukkitMessageSink;
@@ -29,6 +31,7 @@ import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
 import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyService;
 import org.bukkit.Server;
 import org.bukkit.configuration.Configuration;
 import org.bukkit.plugin.PluginManager;
@@ -46,6 +49,7 @@ public class ChatSentinel extends JavaPlugin {
     private BukkitChatPlatform chatPlatform;
     private ChatEventProcessor chatEventProcessor;
     private ChatSentinelCommandService commandService;
+    private SocialSpyService socialSpyService;
     private AlertBus alertBus = new LocalAlertBus();
     private String redisInstanceId;
 
@@ -72,9 +76,11 @@ public class ChatSentinel extends JavaPlugin {
         chatNotificationManager = new ChatNotificationManager();
         alertBus = createAlertBus(configUtil.get("%datafolder%/config.yml"));
         chatPlatform = new BukkitChatPlatform(this, server, messageSink);
+        socialSpyService = new SocialSpyService(moduleManager, chatPlayerManager, chatPlatform);
         chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
-                new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil));
+                new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil),
+                socialSpyService);
         chatPlatform.refreshOnlinePlayers(chatPlayerManager, chatNotificationManager, generalModule);
 
         final PluginManager pluginManager = server.getPluginManager();
@@ -83,7 +89,9 @@ public class ChatSentinel extends JavaPlugin {
         pluginManager.registerEvents(new PlayerMoveListener(chatPlayerManager, moduleManager.getNoMoveChatModule()), this);
         pluginManager.registerEvents(new PlayerTeleportListener(chatPlayerManager), this);
         pluginManager.registerEvents(new PlayerQuitListener(moduleManager.getGeneralModule(), chatPlayerManager, chatNotificationManager), this);
-        pluginManager.registerEvents(new ServerCommandListener(chatPlayerManager, chatNotificationManager), this);
+        pluginManager.registerEvents(new SocialSpySignListener(socialSpyService), this);
+        pluginManager.registerEvents(new SocialSpyBookListener(socialSpyService), this);
+        pluginManager.registerEvents(new ServerCommandListener(chatPlayerManager, chatNotificationManager, socialSpyService), this);
 
         final ChatSentinelCommand command = new ChatSentinelCommand(this);
         getCommand("chatsentinel").setExecutor(command);
@@ -129,6 +137,10 @@ public class ChatSentinel extends JavaPlugin {
 
     public ChatSentinelCommandService getCommandService() {
         return commandService;
+    }
+
+    public SocialSpyService getSocialSpyService() {
+        return socialSpyService;
     }
 
     private void logCompileReport(final FilterCompileReport report) {

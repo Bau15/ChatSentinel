@@ -16,6 +16,8 @@ commands:
       - servermute
       - muteall
       - muteserver
+      - socialspy
+      - sspy
 
 permissions:
   chatsentinel.admin:
@@ -31,6 +33,11 @@ permissions:
       chatsentinel.module: true
       chatsentinel.regex.add: true
       chatsentinel.mute: true
+      chatsentinel.socialspy: true
+      chatsentinel.socialspy.messages: true
+      chatsentinel.socialspy.signs: true
+      chatsentinel.socialspy.books: true
+      chatsentinel.socialspy.commands: true
   chatsentinel.mute.bypass:
     description: "Allows chatting while server mute is active."
     default: op
@@ -51,4 +58,19 @@ permissions:
     default: op
   chatsentinel.spy:
     description: "Toggle ChatSentinel spy alerts."
+    default: op
+  chatsentinel.socialspy:
+    description: "Toggle SocialSpy modules."
+    default: op
+  chatsentinel.socialspy.messages:
+    description: "Receive SocialSpy private-message command notifications."
+    default: op
+  chatsentinel.socialspy.signs:
+    description: "Receive SocialSpy sign notifications."
+    default: op
+  chatsentinel.socialspy.books:
+    description: "Receive SocialSpy book notifications."
+    default: op
+  chatsentinel.socialspy.commands:
+    description: "Receive SocialSpy general command notifications."
     default: op

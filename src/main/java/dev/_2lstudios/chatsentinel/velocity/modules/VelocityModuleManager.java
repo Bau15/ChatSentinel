@@ -15,6 +15,9 @@ import dev._2lstudios.chatsentinel.velocity.utils.ConfigUtil;
 import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
 import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyModuleId;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyModuleSettings;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyTrimSettings;
 import com.velocitypowered.api.proxy.Player;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
@@ -205,6 +208,7 @@ public class VelocityModuleManager extends ModuleManager {
 		getSpyModule().loadData(configYml.node("spy", "enabled").getBoolean(true),
 				configYml.node("spy", "permission").getString("chatsentinel.spy"),
 				configYml.node("spy", "format").getString("&8[&bCS Spy&8] &e%player% &7failed &6%module% &8file=&f%source_file% &8match=&c%matched_text% &8msg=&f%message%"));
+		loadSocialSpy(configYml);
 		blacklistRegistry = blacklistCompilation.getRegistry();
 		whitelistRegistry = configYml.node("whitelist", "enabled").getBoolean()
 				? whitelistCompilation.getRegistry()
@@ -314,5 +318,55 @@ public class VelocityModuleManager extends ModuleManager {
 			}
 		}
 		return result;
+	}
+
+	private void loadSocialSpy(final CommentedConfigurationNode configYml) {
+		getSocialSpyModule().loadData(
+				configYml.node("social-spy", "enabled").getBoolean(true),
+				configYml.node("social-spy", "root-permission").getString("chatsentinel.socialspy"),
+				configYml.node("social-spy", "include-self").getBoolean(false),
+				configYml.node("social-spy", "show-server").getBoolean(true),
+				configYml.node("social-spy", "unavailable-platform-message").getString("&cThis SocialSpy module is not available on this platform."),
+				configYml.node("social-spy", "invalid-module-message").getString("&cUnknown SocialSpy module. Available: &f%modules%"),
+				configYml.node("social-spy", "enabled-message").getString("&aSocialSpy enabled for &f%module%&a."),
+				configYml.node("social-spy", "disabled-message").getString("&cSocialSpy disabled for &f%module%&c."),
+				configYml.node("social-spy", "enabled-all-message").getString("&aSocialSpy enabled for all permitted modules."),
+				configYml.node("social-spy", "disabled-all-message").getString("&cSocialSpy disabled for all permitted modules."),
+				configYml.node("social-spy", "status-header").getString("&eSocialSpy status:"),
+				configYml.node("social-spy", "status-line").getString("&7- &f%module%&7: %state%"),
+				configYml.node("social-spy", "state-enabled").getString("&aenabled"),
+				configYml.node("social-spy", "state-disabled").getString("&cdisabled"),
+				configYml.node("social-spy", "no-permission").getString("&cYou do not have permission to use this SocialSpy module."),
+				new SocialSpyTrimSettings(configYml.node("social-spy", "trim", "command-content-chars").getInt(160),
+						configYml.node("social-spy", "trim", "message-content-chars").getInt(160),
+						configYml.node("social-spy", "trim", "sign-line-chars").getInt(80),
+						configYml.node("social-spy", "trim", "book-title-chars").getInt(40),
+						configYml.node("social-spy", "trim", "book-content-chars").getInt(50),
+						configYml.node("social-spy", "trim", "append-ellipsis").getString("...")),
+				readSocialSpyModuleSettings(configYml),
+				readStringList(configYml.node("social-spy", "message-command-patterns")),
+				readStringList(configYml.node("social-spy", "ignored-command-roots")));
+	}
+
+	private List<SocialSpyModuleSettings> readSocialSpyModuleSettings(final CommentedConfigurationNode configYml) {
+		final java.util.ArrayList<SocialSpyModuleSettings> result = new java.util.ArrayList<SocialSpyModuleSettings>();
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.MESSAGES, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.SIGNS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.BOOKS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.COMMANDS, false);
+		return result;
+	}
+
+	private void addSocialSpyModuleSettings(final List<SocialSpyModuleSettings> result,
+			final CommentedConfigurationNode configYml, final String moduleId, final boolean defaultEnabled) {
+		final ConfigurationNode node = configYml.node("social-spy", "modules", moduleId);
+		result.add(new SocialSpyModuleSettings(moduleId, node.node("enabled").getBoolean(true),
+				node.node("default-enabled").getBoolean(defaultEnabled),
+				node.node("permission").getString("chatsentinel.socialspy." + moduleId),
+				node.node("format").getString(getSocialSpyModule().getSettings(moduleId).getFormat())));
+	}
+
+	private List<String> readStringList(final ConfigurationNode node) {
+		return node.childrenList().stream().map(ConfigurationNode::getString).collect(Collectors.toList());
 	}
 }

@@ -25,6 +25,9 @@ import dev._2lstudios.chatsentinel.shared.filter.FilterModuleSettingsRegistry;
 import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
 import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyModuleId;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyModuleSettings;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyTrimSettings;
 
 public class BukkitModuleManager extends ModuleManager {
 	private ConfigUtil configUtil;
@@ -79,6 +82,7 @@ public class BukkitModuleManager extends ModuleManager {
 		getSpyModule().loadData(configYml.getBoolean("spy.enabled", true),
 				configYml.getString("spy.permission", "chatsentinel.spy"),
 				configYml.getString("spy.format", "&8[&bCS Spy&8] &e%player% &7failed &6%module% &8file=&f%source_file% &8match=&c%matched_text% &8msg=&f%message%"));
+		loadSocialSpy(configYml);
 		FilterModuleSettingsRegistry blacklistSettingsRegistry = buildBlacklistSettingsRegistry(configYml);
 		Map<String, Map<String, String>> locales = new HashMap<>();
 
@@ -258,6 +262,54 @@ public class BukkitModuleManager extends ModuleManager {
 			}
 		}
 		return result;
+	}
+
+	private void loadSocialSpy(final Configuration configYml) {
+		getSocialSpyModule().loadData(
+				configYml.getBoolean("social-spy.enabled", true),
+				configYml.getString("social-spy.root-permission", "chatsentinel.socialspy"),
+				configYml.getBoolean("social-spy.include-self", false),
+				configYml.getBoolean("social-spy.show-server", true),
+				configYml.getString("social-spy.unavailable-platform-message", "&cThis SocialSpy module is not available on this platform."),
+				configYml.getString("social-spy.invalid-module-message", "&cUnknown SocialSpy module. Available: &f%modules%"),
+				configYml.getString("social-spy.enabled-message", "&aSocialSpy enabled for &f%module%&a."),
+				configYml.getString("social-spy.disabled-message", "&cSocialSpy disabled for &f%module%&c."),
+				configYml.getString("social-spy.enabled-all-message", "&aSocialSpy enabled for all permitted modules."),
+				configYml.getString("social-spy.disabled-all-message", "&cSocialSpy disabled for all permitted modules."),
+				configYml.getString("social-spy.status-header", "&eSocialSpy status:"),
+				configYml.getString("social-spy.status-line", "&7- &f%module%&7: %state%"),
+				configYml.getString("social-spy.state-enabled", "&aenabled"),
+				configYml.getString("social-spy.state-disabled", "&cdisabled"),
+				configYml.getString("social-spy.no-permission", "&cYou do not have permission to use this SocialSpy module."),
+				new SocialSpyTrimSettings(
+						configYml.getInt("social-spy.trim.command-content-chars", 160),
+						configYml.getInt("social-spy.trim.message-content-chars", 160),
+						configYml.getInt("social-spy.trim.sign-line-chars", 80),
+						configYml.getInt("social-spy.trim.book-title-chars", 40),
+						configYml.getInt("social-spy.trim.book-content-chars", 50),
+						configYml.getString("social-spy.trim.append-ellipsis", "...")),
+				readSocialSpyModuleSettings(configYml),
+				configYml.getStringList("social-spy.message-command-patterns"),
+				configYml.getStringList("social-spy.ignored-command-roots"));
+	}
+
+	private List<SocialSpyModuleSettings> readSocialSpyModuleSettings(final Configuration configYml) {
+		final java.util.ArrayList<SocialSpyModuleSettings> result = new java.util.ArrayList<SocialSpyModuleSettings>();
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.MESSAGES, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.SIGNS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.BOOKS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.COMMANDS, false);
+		return result;
+	}
+
+	private void addSocialSpyModuleSettings(final List<SocialSpyModuleSettings> result, final Configuration configYml,
+			final String moduleId, final boolean defaultEnabled) {
+		final String path = "social-spy.modules." + moduleId;
+		result.add(new SocialSpyModuleSettings(moduleId,
+				configYml.getBoolean(path + ".enabled", true),
+				configYml.getBoolean(path + ".default-enabled", defaultEnabled),
+				configYml.getString(path + ".permission", "chatsentinel.socialspy." + moduleId),
+				configYml.getString(path + ".format", getSocialSpyModule().getSettings(moduleId).getFormat())));
 	}
 
 }

@@ -3,11 +3,13 @@ package dev._2lstudios.chatsentinel.bungee;
 import dev._2lstudios.chatsentinel.bungee.commands.ChatSentinelCommand;
 import dev._2lstudios.chatsentinel.bungee.commands.AutoCorrectCommand;
 import dev._2lstudios.chatsentinel.bungee.commands.ServerMuteCommand;
+import dev._2lstudios.chatsentinel.bungee.commands.SocialSpyCommand;
 import dev._2lstudios.chatsentinel.bungee.config.BungeeMutableModuleConfigStore;
 import dev._2lstudios.chatsentinel.bungee.filter.BungeeUserFilterWriter;
 import dev._2lstudios.chatsentinel.bungee.listeners.ChatListener;
 import dev._2lstudios.chatsentinel.bungee.listeners.PlayerDisconnectListener;
 import dev._2lstudios.chatsentinel.bungee.listeners.PostLoginListener;
+import dev._2lstudios.chatsentinel.bungee.listeners.SocialSpyCommandListener;
 import dev._2lstudios.chatsentinel.bungee.modules.BungeeModuleManager;
 import dev._2lstudios.chatsentinel.bungee.platform.BungeeChatPlatform;
 import dev._2lstudios.chatsentinel.bungee.text.BungeeMessageSink;
@@ -27,6 +29,7 @@ import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
 import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyService;
 import net.md_5.bungee.api.ProxyServer;
 import net.md_5.bungee.api.plugin.Plugin;
 import net.md_5.bungee.api.plugin.PluginManager;
@@ -45,6 +48,7 @@ public class ChatSentinel extends Plugin {
     private BungeeChatPlatform chatPlatform;
     private ChatEventProcessor chatEventProcessor;
     private ChatSentinelCommandService commandService;
+    private SocialSpyService socialSpyService;
     private AlertBus alertBus = new LocalAlertBus();
     private String redisInstanceId;
 
@@ -75,17 +79,21 @@ public class ChatSentinel extends Plugin {
         chatNotificationManager = new ChatNotificationManager();
         alertBus = createAlertBus(configUtil.get("%datafolder%/config.yml"));
         chatPlatform = new BungeeChatPlatform(this, getProxy(), messageSink);
+        socialSpyService = new SocialSpyService(moduleManager, chatPlayerManager, chatPlatform);
         chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
-                new UserRegexAddService(new BungeeUserFilterWriter(getDataFolder())), new BungeeMutableModuleConfigStore(this, configUtil));
+                new UserRegexAddService(new BungeeUserFilterWriter(getDataFolder())), new BungeeMutableModuleConfigStore(this, configUtil),
+                socialSpyService);
 
         final PluginManager pluginManager = server.getPluginManager();
         pluginManager.registerListener(this, new ChatListener(this, moduleManager.getWhitelistModule(), chatPlayerManager));
+        pluginManager.registerListener(this, new SocialSpyCommandListener(this, socialSpyService));
         pluginManager.registerListener(this, new PlayerDisconnectListener(generalModule, chatPlayerManager, chatNotificationManager));
         pluginManager.registerListener(this, new PostLoginListener(generalModule, chatPlayerManager, chatNotificationManager));
         pluginManager.registerCommand(this, new ChatSentinelCommand(this));
         pluginManager.registerCommand(this, new AutoCorrectCommand(this));
         pluginManager.registerCommand(this, new ServerMuteCommand(this));
+        pluginManager.registerCommand(this, new SocialSpyCommand(this));
 
         getProxy().getScheduler().schedule(this, new Runnable() {
             @Override
@@ -116,6 +124,10 @@ public class ChatSentinel extends Plugin {
 
     public ChatSentinelCommandService getCommandService() {
         return commandService;
+    }
+
+    public SocialSpyService getSocialSpyService() {
+        return socialSpyService;
     }
 
     private void logCompileReport(final FilterCompileReport report) {

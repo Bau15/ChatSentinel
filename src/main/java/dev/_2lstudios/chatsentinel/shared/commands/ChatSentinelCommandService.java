@@ -15,6 +15,8 @@ import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.platform.CommandActor;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyModuleId;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyService;
 
 import java.io.IOException;
 import java.util.ArrayList;
@@ -28,8 +30,9 @@ import java.util.Set;
 public final class ChatSentinelCommandService {
     private static final List<String> SUBCOMMANDS = Arrays.asList(
             "help", "reload", "status", "selftest", "clear", "notify", "spy", "delete",
-            "module", "regex", "mutechat", "servermute", "muteall", "muteserver", "autocorrect", "correction");
+            "module", "regex", "mutechat", "servermute", "muteall", "muteserver", "autocorrect", "correction", "socialspy", "sspy");
     private static final List<String> ON_OFF_TOGGLE_MODES = Arrays.asList("on", "off", "toggle");
+    private static final List<String> SOCIALSPY_ARGUMENTS = Arrays.asList("status", "messages", "signs", "books", "commands");
 
     private final ModuleManager moduleManager;
     private final ChatPlayerManager chatPlayerManager;
@@ -37,16 +40,19 @@ public final class ChatSentinelCommandService {
     private final ChatPlatform platform;
     private final UserRegexAddService regexAddService;
     private final MutableModuleConfigStore configStore;
+    private final SocialSpyService socialSpyService;
 
     public ChatSentinelCommandService(final ModuleManager moduleManager, final ChatPlayerManager chatPlayerManager,
             final ChatNotificationManager chatNotificationManager, final ChatPlatform platform,
-            final UserRegexAddService regexAddService, final MutableModuleConfigStore configStore) {
+            final UserRegexAddService regexAddService, final MutableModuleConfigStore configStore,
+            final SocialSpyService socialSpyService) {
         this.moduleManager = moduleManager;
         this.chatPlayerManager = chatPlayerManager;
         this.chatNotificationManager = chatNotificationManager;
         this.platform = platform;
         this.regexAddService = regexAddService;
         this.configStore = configStore;
+        this.socialSpyService = socialSpyService;
     }
 
     public CommandResult execute(final CommandActor actor, final String label, final String[] args) {
@@ -57,6 +63,10 @@ public final class ChatSentinelCommandService {
         }
         if (isServerMuteAlias(normalizedLabel)) {
             handleServerMute(actor, args, actor.getLocale(), 0, "/" + normalizedLabel);
+            return CommandResult.handled();
+        }
+        if ("socialspy".equals(normalizedLabel) || "sspy".equals(normalizedLabel)) {
+            handleSocialSpy(actor, args, actor.getLocale(), 0);
             return CommandResult.handled();
         }
         return execute(actor, args);
@@ -91,6 +101,8 @@ public final class ChatSentinelCommandService {
             handleServerMute(actor, args, lang, 1, "/chatsentinel " + subcommand);
         } else if ("autocorrect".equals(subcommand) || "correction".equals(subcommand)) {
             handleAutocorrect(actor, args, lang, 1);
+        } else if ("socialspy".equals(subcommand) || "sspy".equals(subcommand)) {
+            handleSocialSpy(actor, args, lang, 1);
         } else {
             actor.sendMessage(messagesModule.getUnknownCommand(lang));
         }
@@ -108,6 +120,13 @@ public final class ChatSentinelCommandService {
         }
         if (isServerMuteAlias(normalizedLabel)) {
             return suggestModes(args, 0, ON_OFF_TOGGLE_MODES);
+        }
+        if ("socialspy".equals(normalizedLabel) || "sspy".equals(normalizedLabel)) {
+            return suggestModes(args, 0, SOCIALSPY_ARGUMENTS);
+        }
+
+        if (args.length == 2 && ("socialspy".equalsIgnoreCase(args[0]) || "sspy".equalsIgnoreCase(args[0]))) {
+            return suggestModes(args, 1, SOCIALSPY_ARGUMENTS);
         }
 
         if (args.length == 2 && ("mutechat".equalsIgnoreCase(args[0]) || isServerMuteAlias(args[0]))) {
@@ -161,6 +180,7 @@ public final class ChatSentinelCommandService {
         sendHelpLine(actor, CommandPermission.REGEX_ADD, "&e/chatsentinel regex add <moduleId> common|raw <text|regex> &7- &bAdds user blacklist regex.");
         sendHelpLine(actor, CommandPermission.MUTE, "&e/servermute [on|off|toggle] [reason] &7- &bMutes or unmutes server chat.");
         sendHelpLine(actor, CommandPermission.MUTE, "&e/chatsentinel mutechat [on|off|toggle] [reason] &7- &bSame as /servermute.");
+        sendHelpLine(actor, CommandPermission.SOCIALSPY, "&e/socialspy [module|status] &7- &bToggles SocialSpy modules.");
         sendHelpLine(actor, CommandPermission.HELP, "&e/autocorrect [on|off|toggle] &7- &bToggles personal correction.");
     }
 
@@ -484,6 +504,7 @@ public final class ChatSentinelCommandService {
         if ("regex".equals(subcommand)) return CommandPermission.REGEX_ADD;
         if ("mutechat".equals(subcommand) || isServerMuteAlias(subcommand)) return CommandPermission.MUTE;
         if ("spy".equals(subcommand)) return moduleManager.getSpyModule().getPermission();
+        if ("socialspy".equals(subcommand) || "sspy".equals(subcommand)) return CommandPermission.SOCIALSPY;
         if ("delete".equals(subcommand)) return CommandPermission.DELETE;
         if ("autocorrect".equals(subcommand) || "correction".equals(subcommand)) return CommandPermission.HELP;
         return CommandPermission.HELP;
@@ -560,6 +581,50 @@ public final class ChatSentinelCommandService {
             builder.append(args[i]);
         }
         return builder.toString();
+    }
+
+    private void handleSocialSpy(final CommandActor actor, final String[] args, final String lang, final int moduleIndex) {
+        final ChatUser user = actor.asUserOrNull();
+        if (user == null) {
+            actor.sendMessage("Only players can use SocialSpy.");
+            return;
+        }
+        if (!socialSpyService.hasAnyPermission(user)) {
+            actor.sendMessage(moduleManager.getSocialSpyModule().getNoPermission());
+            return;
+        }
+        if (args.length <= moduleIndex) {
+            final boolean enabled = socialSpyService.toggleAllPermitted(user);
+            actor.sendMessage(enabled
+                    ? moduleManager.getSocialSpyModule().getEnabledAllMessage()
+                    : moduleManager.getSocialSpyModule().getDisabledAllMessage());
+            return;
+        }
+        final String requested = args[moduleIndex];
+        if ("status".equalsIgnoreCase(requested)) {
+            sendLines(actor, socialSpyService.status(user));
+            return;
+        }
+        if (!SocialSpyModuleId.isValid(requested)) {
+            actor.sendMessage(moduleManager.getSocialSpyModule().getInvalidModuleMessage(String.join(", ", SocialSpyModuleId.ids())));
+            return;
+        }
+        final String moduleId = SocialSpyModuleId.normalize(requested);
+        if (!socialSpyService.hasModulePermission(user, moduleId)) {
+            actor.sendMessage(moduleManager.getSocialSpyModule().getNoPermission());
+            return;
+        }
+        final boolean enabled = socialSpyService.toggle(user, moduleId);
+        actor.sendMessage(enabled
+                ? moduleManager.getSocialSpyModule().getEnabledMessage(moduleId)
+                : moduleManager.getSocialSpyModule().getDisabledMessage(moduleId));
+    }
+
+    private void sendLines(final CommandActor actor, final String message) {
+        final String[] lines = message.split("\\n");
+        for (String line : lines) {
+            actor.sendMessage(line);
+        }
     }
 
     private FilterCompileStatus createStatus(final CommandActor actor) {

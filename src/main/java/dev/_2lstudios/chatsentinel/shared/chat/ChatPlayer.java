@@ -20,6 +20,7 @@ public class ChatPlayer {
     private boolean movedSinceJoin;
     private boolean movementGatePassed;
     private boolean movementGateHasOrigin;
+    private final Map<String, Boolean> socialSpyOverrides = new HashMap<String, Boolean>();
     private String movementGateWorld;
     private double movementGateX;
     private double movementGateY;
@@ -207,6 +208,23 @@ public synchronized boolean isSpy() {
 
 	public synchronized void setSpy(boolean spy) {
 		this.spy = spy;
+	}
+
+	public synchronized boolean hasSocialSpyOverride(final String moduleId) {
+		return socialSpyOverrides.containsKey(moduleId);
+	}
+
+	public synchronized boolean getSocialSpyOverride(final String moduleId) {
+		final Boolean value = socialSpyOverrides.get(moduleId);
+		return value != null && value.booleanValue();
+	}
+
+	public synchronized void setSocialSpyOverride(final String moduleId, final boolean enabled) {
+		socialSpyOverrides.put(moduleId, Boolean.valueOf(enabled));
+	}
+
+	public synchronized void clearSocialSpyOverrides() {
+		socialSpyOverrides.clear();
 	}
 
 	public synchronized boolean isCorrectionEnabled() {

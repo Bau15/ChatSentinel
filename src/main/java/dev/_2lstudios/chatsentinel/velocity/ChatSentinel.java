@@ -32,11 +32,13 @@ import dev._2lstudios.chatsentinel.velocity.filter.VelocityUserFilterWriter;
 import dev._2lstudios.chatsentinel.velocity.listeners.ChatListener;
 import dev._2lstudios.chatsentinel.velocity.listeners.PlayerDisconnectListener;
 import dev._2lstudios.chatsentinel.velocity.listeners.PostLoginListener;
+import dev._2lstudios.chatsentinel.velocity.listeners.SocialSpyCommandListener;
 import dev._2lstudios.chatsentinel.velocity.modules.VelocityModuleManager;
 import dev._2lstudios.chatsentinel.velocity.platform.VelocityChatPlatform;
 import dev._2lstudios.chatsentinel.velocity.text.VelocityMessageSink;
 import dev._2lstudios.chatsentinel.velocity.utils.ConfigUtil;
 import dev._2lstudios.chatsentinel.velocity.utils.Constants;
+import dev._2lstudios.chatsentinel.shared.socialspy.SocialSpyService;
 import net.kyori.adventure.text.logger.slf4j.ComponentLogger;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 
@@ -59,6 +61,7 @@ public class ChatSentinel {
     private VelocityChatPlatform chatPlatform;
     private ChatEventProcessor chatEventProcessor;
     private ChatSentinelCommandService commandService;
+    private SocialSpyService socialSpyService;
     private AlertBus alertBus = new LocalAlertBus();
     private String redisInstanceId;
 
@@ -82,18 +85,21 @@ public class ChatSentinel {
         chatPlayerManager = new ChatPlayerManager();
         chatNotificationManager = new ChatNotificationManager();
         chatPlatform = new VelocityChatPlatform(this, server, messageSink);
+        socialSpyService = new SocialSpyService(moduleManager, chatPlayerManager, chatPlatform);
         chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
-                new UserRegexAddService(new VelocityUserFilterWriter(dataDirectory)), new VelocityMutableModuleConfigStore(this));
+                new UserRegexAddService(new VelocityUserFilterWriter(dataDirectory)), new VelocityMutableModuleConfigStore(this),
+                socialSpyService);
 
         final EventManager eventManager = server.getEventManager();
         eventManager.register(this, new ChatListener(this, moduleManager.getWhitelistModule()));
+        eventManager.register(this, new SocialSpyCommandListener(this, socialSpyService));
         eventManager.register(this, new PlayerDisconnectListener(this, generalModule, chatPlayerManager, chatNotificationManager));
         eventManager.register(this, new PostLoginListener(this, generalModule, chatPlayerManager, chatNotificationManager));
 
         final CommandManager commandManager = server.getCommandManager();
         final CommandMeta commandMeta = commandManager.metaBuilder("chatsentinel")
-                .aliases("autocorrect", "correction", "servermute", "muteall", "muteserver")
+                .aliases("autocorrect", "correction", "servermute", "muteall", "muteserver", "socialspy", "sspy")
                 .plugin(this)
                 .build();
         final SimpleCommand chatSentinelCommand = new ChatSentinelCommand(this);
@@ -144,6 +150,10 @@ public class ChatSentinel {
 
     public ChatSentinelCommandService getCommandService() {
         return commandService;
+    }
+
+    public SocialSpyService getSocialSpyService() {
+        return socialSpyService;
     }
 
     private void logCompileReport(final FilterCompileReport report) {
