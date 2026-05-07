@@ -1,0 +1,4 @@
+# ChatSentinel managed default-filter-version: 2026-05-06-offense-v2
+# Hacked-client spam signatures restored from original config.
+expressions:
+  - 'LiquidBounce[\W_]{0,2}Hacked[\W_]{0,2}Client[\W_]{0,2}by[\W_]{0,2}CCBlueX'

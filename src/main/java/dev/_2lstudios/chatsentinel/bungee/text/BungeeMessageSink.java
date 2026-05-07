@@ -2,6 +2,7 @@ package dev._2lstudios.chatsentinel.bungee.text;
 
 import java.util.logging.Logger;
 
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import dev._2lstudios.chatsentinel.shared.text.MessageSink;
 import dev._2lstudios.chatsentinel.shared.text.WarningDeliverySettings;
 import net.md_5.bungee.api.ChatMessageType;
@@ -21,7 +22,9 @@ public final class BungeeMessageSink implements MessageSink<ProxiedPlayer> {
 		if (player == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
-		player.sendMessage(legacyMessage);
+		for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+			player.sendMessage(TextComponent.fromLegacyText(line));
+		}
 	}
 
 	@Override
@@ -29,7 +32,7 @@ public final class BungeeMessageSink implements MessageSink<ProxiedPlayer> {
 		if (player == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
-		sendActionBarSafely(player, legacyMessage);
+		sendActionBarSafely(player, LegacyText.toSection(legacyMessage).replace('\n', ' '));
 	}
 
 	@Override
@@ -37,10 +40,11 @@ public final class BungeeMessageSink implements MessageSink<ProxiedPlayer> {
 		if (settings == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
+		final String sectionMessage = LegacyText.toSection(legacyMessage);
 		if (settings.isMessageEnabled()) {
-			sendMessage(player, legacyMessage);
+			sendMessage(player, sectionMessage);
 		}
-		if (settings.isActionBarEnabled() && !sendActionBarSafely(player, legacyMessage) && !settings.isMessageEnabled()) {
+		if (settings.isActionBarEnabled() && !sendActionBarSafely(player, sectionMessage.replace('\n', ' ')) && !settings.isMessageEnabled()) {
 			logActionBarUnsupported();
 		}
 	}

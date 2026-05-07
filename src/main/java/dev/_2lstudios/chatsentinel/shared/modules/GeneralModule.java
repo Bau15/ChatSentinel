@@ -1,28 +1,53 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
 
 public class GeneralModule {
 	private Pattern nonAlphaNumericPattern = Pattern.compile("[^a-zA-Z0-9]");
-	private Pattern nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
-	private Collection<String> nicknames = new HashSet<>();
+	private volatile Pattern nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
+	private final Set<String> nicknames = Collections.synchronizedSet(new HashSet<String>());
 	private Collection<String> commands;
 	private boolean sanitize;
 	private boolean sanitizeNames;
 	private boolean filterOther;
+	private String globalBypassPermission = "chatsentinel.bypass";
+	private Set<String> globalBypassExcludedModules = new HashSet<>();
 
 	public void loadData(boolean sanitize, boolean sanitizeNames, boolean filterOther,
 			Collection<String> commands) {
+		loadData(sanitize, sanitizeNames, filterOther, commands, "chatsentinel.bypass",
+				Arrays.asList("capitalization", "correction"));
+	}
+
+	public void loadData(boolean sanitize, boolean sanitizeNames, boolean filterOther,
+			Collection<String> commands, String globalBypassPermission,
+			Collection<String> globalBypassExcludedModules) {
 		this.sanitize = sanitize;
 		this.sanitizeNames = sanitizeNames;
 		this.filterOther = filterOther;
-		this.commands = commands;
+		this.commands = commands == null ? Collections.<String>emptyList() : commands;
+		this.globalBypassPermission = globalBypassPermission == null || globalBypassPermission.trim().isEmpty()
+				? "chatsentinel.bypass"
+				: globalBypassPermission.trim();
+
+		final Set<String> excluded = new HashSet<>();
+		if (globalBypassExcludedModules != null) {
+			for (String moduleId : globalBypassExcludedModules) {
+				if (moduleId != null && !moduleId.trim().isEmpty()) {
+					excluded.add(normalizeModuleId(moduleId));
+				}
+			}
+		}
+		this.globalBypassExcludedModules = excluded;
 	}
 
 	public boolean isSanitizeEnabled() {
@@ -57,23 +82,24 @@ public class GeneralModule {
 		return nonAlphaNumericPattern.matcher(text).replaceAll("");
 	}
 
-	private boolean needsNicknameCompile = false;
+	private volatile boolean needsNicknameCompile = false;
 
-	public boolean needsNicknameCompile() {
+	public synchronized boolean needsNicknameCompile() {
 		return needsNicknameCompile;
 	}
 
-	public void compileNicknamesPattern() {
+	public synchronized void compileNicknamesPattern() {
 		needsNicknameCompile = false;
 
-		if (nicknames.isEmpty()) {
+		final Collection<String> nicknameSnapshot = new HashSet<String>(nicknames);
+		if (nicknameSnapshot.isEmpty()) {
 			nicknamesPattern = PatternUtil.compileSafe(Collections.emptyList());
 			return;
 		}
 
-		Collection<String> quotedNicknames = new HashSet<>();
+		Collection<String> quotedNicknames = new HashSet<String>();
 
-		for (String nickname : nicknames) {
+		for (String nickname : nicknameSnapshot) {
 			quotedNicknames.add(Pattern.quote(nickname));
 		}
 
@@ -84,7 +110,7 @@ public class GeneralModule {
 		return nicknamesPattern;
 	}
 
-	public void addNickname(String nickname) {
+	public synchronized void addNickname(String nickname) {
 		// Remove alphanumeric to avoid errors
 		nicknames.add(removeNonAlphanumeric(nickname));
 
@@ -92,7 +118,7 @@ public class GeneralModule {
 		needsNicknameCompile = true;
 	}
 
-	public void removeNickname(String nickname) {
+	public synchronized void removeNickname(String nickname) {
 		// Remove alphanumeric to avoid errors
 		nicknames.remove(removeNonAlphanumeric(nickname));
 		
@@ -117,5 +143,17 @@ public class GeneralModule {
 
 	public boolean isFilterOther() {
 		return filterOther;
+	}
+
+	public String getGlobalBypassPermission() {
+		return globalBypassPermission;
+	}
+
+	public boolean isGlobalBypassExcluded(final String moduleId) {
+		return globalBypassExcludedModules.contains(normalizeModuleId(moduleId));
+	}
+
+	public String normalizeModuleId(final String moduleId) {
+		return moduleId == null ? "" : moduleId.trim().toLowerCase(Locale.ROOT).replace('_', '-');
 	}
 }

@@ -4,6 +4,7 @@ import dev._2lstudios.chatsentinel.shared.filter.CompiledFilterRegistry;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompiler;
+import dev._2lstudios.chatsentinel.shared.filter.DefaultFilterInstaller;
 import dev._2lstudios.chatsentinel.shared.filter.FilterExpressionFile;
 import dev._2lstudios.chatsentinel.shared.filter.FilterKind;
 import dev._2lstudios.chatsentinel.shared.filter.FilterModuleSettings;
@@ -14,6 +15,7 @@ import dev._2lstudios.chatsentinel.velocity.utils.ConfigUtil;
 import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
 import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import com.velocitypowered.api.proxy.Player;
 import org.spongepowered.configurate.CommentedConfigurationNode;
 import org.spongepowered.configurate.ConfigurationNode;
 
@@ -73,6 +75,7 @@ public class VelocityModuleManager extends ModuleManager {
 		getCapitalizationModule().loadData(configYml.node(capitalizationKey, "enabled").getBoolean(true),
 				configYml.node(capitalizationKey, "custom-module-name").getString("Capitalization"),
 				configYml.node(hasCapitalizationConfig ? "capitalization" : "caps", hasCapitalizationConfig ? "correct" : "replace").getBoolean(true),
+				configYml.node(capitalizationKey, "capitalize-first-letter").getBoolean(true),
 				configYml.node(hasCapitalizationConfig ? "capitalization" : "caps", hasCapitalizationConfig ? "max-uppercase" : "max").getInt(8),
 				configYml.node(capitalizationKey, "warn", "max").getInt(-1),
 				configYml.node(capitalizationKey, "warn", "notification").getString(""),
@@ -87,7 +90,7 @@ public class VelocityModuleManager extends ModuleManager {
 				() -> plugin.getServer().getAllPlayers().stream()
 						.map(player -> player.getUsername())
 						.collect(Collectors.toList()),
-				configYml.node(capitalizationKey, "bypass-permission").getString("chatsentinel.bypass.capitalization"));
+				configYml.node(capitalizationKey, "bypass-permission").getString(""));
 		getCooldownModule().loadData(configYml.node("cooldown", "enabled").getBoolean(),
 				configYml.node("cooldown", "time", "repeat-global").getInt(),
 				configYml.node("cooldown", "time", "repeat").getInt(),
@@ -106,8 +109,8 @@ public class VelocityModuleManager extends ModuleManager {
 		getServerMuteModule().loadData(configYml.node("server-mute", "enabled").getBoolean(true),
 				configYml.node("server-mute", "muted").getBoolean(false),
 				configYml.node("server-mute", "bypass-permission").getString("chatsentinel.mute.bypass"));
-		getNoMoveChatModule().loadData(configYml.node("no-move-chat", "enabled").getBoolean(false),
-				configYml.node("no-move-chat", "bypass-permission").getString("chatsentinel.bypass.no-move-chat"),
+		getNoMoveChatModule().loadData(configYml.node("no-move-chat", "enabled").getBoolean(true),
+				configYml.node("no-move-chat", "bypass-permission").getString(""),
 				configYml.node("no-move-chat", "min-distance-blocks").getDouble(5.0D),
 				configYml.node("no-move-chat", "allow-teleport").getBoolean(true));
 		getChatSnapshotModule().loadData(configYml.node("chat-snapshot", "enabled").getBoolean(true),
@@ -119,6 +122,10 @@ public class VelocityModuleManager extends ModuleManager {
 				configYml.node("general", "filter-other").getBoolean(false),
 				configYml.node("general", "commands").childrenList().stream()
 						.map(ConfigurationNode::getString)
+						.collect(Collectors.toList()),
+				configYml.node("general", "global-bypass-permission").getString("chatsentinel.bypass"),
+				configYml.node("general", "global-bypass-excluded-modules").childrenList().stream()
+						.map(ConfigurationNode::getString)
 						.collect(Collectors.toList()));
 		boolean hasAllowedCharactersConfig = !configYml.node("allowed-characters").virtual();
 		getAllowedCharactersModule().loadData(
@@ -128,6 +135,22 @@ public class VelocityModuleManager extends ModuleManager {
 				configYml.node("allowed-characters", "mode").getString(AllowedCharactersModule.DEFAULT_MODE),
 				configYml.node("allowed-characters", "allowed-regex").getString(AllowedCharactersModule.DEFAULT_ALLOWED_REGEX),
 				configYml.node("allowed-characters", "replacement").getString(AllowedCharactersModule.DEFAULT_REPLACEMENT));
+		getCorrectionModule().loadData(
+				configYml.node("correction", "enabled").getBoolean(true),
+				configYml.node("correction", "custom-module-name").getString("Correction"),
+				configYml.node("correction", "notify-player").getBoolean(true),
+				configYml.node("correction", "apply-to-normal-commands").getBoolean(false),
+				configYml.node("correction", "preserve-capitalization").getBoolean(true),
+				configYml.node("correction", "ignore-player-names").getBoolean(true),
+				configYml.node("correction", "max-corrections-per-message").getInt(8),
+				configYml.node("correction", "bypass-permission").getString(""),
+				readStringMap(configYml.node("correction", "replacements")),
+				configYml.node("correction", "ignored-words").childrenList().stream()
+						.map(ConfigurationNode::getString)
+						.collect(Collectors.toList()),
+				() -> plugin.getServer().getAllPlayers().stream()
+						.map(Player::getUsername)
+						.collect(Collectors.toList()));
 		getWhitelistModule().loadData(configYml.node("whitelist", "enabled").getBoolean(),
 				whitelistYml.node("servers").childrenList().stream()
 						.map(ConfigurationNode::getString)
@@ -156,6 +179,12 @@ public class VelocityModuleManager extends ModuleManager {
 		CompiledFilterRegistry whitelistRegistry;
 		VelocityFilterFileLoader filterFileLoader = new VelocityFilterFileLoader();
 		FilterCompiler compiler = new FilterCompiler();
+		DefaultFilterInstaller.installIfNeeded(dataDirectory.toFile(), VelocityModuleManager.class.getClassLoader(), new java.util.function.Consumer<String>() {
+			@Override
+			public void accept(final String message) {
+				plugin.getLogger().info(message);
+			}
+		});
 		List<FilterExpressionFile> blacklistFiles = filterFileLoader.load(FilterKind.BLACKLIST, dataDirectory, configUtil);
 		List<FilterExpressionFile> whitelistFiles = filterFileLoader.load(FilterKind.WHITELIST, dataDirectory, configUtil);
 		if (status != null) {
@@ -271,5 +300,19 @@ public class VelocityModuleManager extends ModuleManager {
 		} catch (ReflectiveOperationException e) {
 			throw new IllegalStateException("Unable to resolve Velocity plugin", e);
 		}
+	}
+
+	private Map<String, String> readStringMap(final ConfigurationNode node) {
+		final Map<String, String> result = new HashMap<String, String>();
+		if (node == null || node.virtual()) {
+			return result;
+		}
+		for (Object key : node.childrenMap().keySet()) {
+			final String value = node.node(key).getString();
+			if (value != null) {
+				result.put(String.valueOf(key), value);
+			}
+		}
+		return result;
 	}
 }

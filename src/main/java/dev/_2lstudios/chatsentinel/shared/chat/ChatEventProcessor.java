@@ -9,6 +9,7 @@ import dev._2lstudios.chatsentinel.shared.moderation.ModerationViolation;
 import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
 import dev._2lstudios.chatsentinel.shared.modules.CooldownModerationModule;
 import dev._2lstudios.chatsentinel.shared.modules.DiscordWebhookModule;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.modules.MessagesModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModerationModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
@@ -16,6 +17,8 @@ import dev._2lstudios.chatsentinel.shared.modules.NoMoveChatModule;
 import dev._2lstudios.chatsentinel.shared.modules.ServerMuteModule;
 import dev._2lstudios.chatsentinel.shared.modules.SpyModule;
 import dev._2lstudios.chatsentinel.shared.modules.SyntaxModerationModule;
+import dev._2lstudios.chatsentinel.shared.modules.CorrectionModule;
+import dev._2lstudios.chatsentinel.shared.modules.CorrectionResult;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.utils.PlaceholderUtil;
@@ -54,7 +57,8 @@ public final class ChatEventProcessor {
             return new ProcessedChatEvent(originalMessage, true, false);
         }
 
-        final ChatEventResult finalResult = new ChatEventResult(originalMessage, false, false);
+        final String correctedMessage = applyCorrection(chatPlayer, user, originalMessage, enforce, isCommand, isNormalCommand, lang);
+        final ChatEventResult finalResult = new ChatEventResult(correctedMessage, false, false);
         final ModerationModule[] moderationModulesToProcess = {
                 moduleManager.getSyntaxModule(),
                 moduleManager.getAllowedCharactersModule(),
@@ -77,6 +81,18 @@ public final class ChatEventProcessor {
 
             if (!enforce) {
                 dispatchWarnOnly(user, chatPlayer, moderationModule, originalMessage, message, result);
+                continue;
+            }
+
+            if (!result.isNotify()) {
+                finalResult.setMessage(result.getMessage());
+                if (result.isHide()) {
+                    finalResult.setHide(true);
+                }
+                if (result.isCancelled()) {
+                    finalResult.setCancelled(true);
+                    break;
+                }
                 continue;
             }
 
@@ -110,7 +126,7 @@ public final class ChatEventProcessor {
     private boolean isServerMuted(final ChatUser user, final ChatPlayer chatPlayer, final MessagesModule messagesModule,
             final String playerName, final String originalMessage, final String lang) {
         final ServerMuteModule serverMuteModule = moduleManager.getServerMuteModule();
-        if (user.hasPermission(serverMuteModule.getBypassPermission())) {
+        if (hasModuleBypass(user, "server-mute", serverMuteModule.getBypassPermission())) {
             return false;
         }
         final ChatEventResult serverMuteResult = serverMuteModule.processEvent(chatPlayer, messagesModule, playerName, originalMessage, lang);
@@ -126,7 +142,7 @@ public final class ChatEventProcessor {
         if (!"Bukkit".equals(platform.getPlatformName())) {
             return false;
         }
-        if (user.hasPermission(noMoveChatModule.getBypassPermission())) {
+        if (hasModuleBypass(user, "no-move-chat", noMoveChatModule.getBypassPermission())) {
             return false;
         }
         final ChatEventResult noMoveChatResult = noMoveChatModule.processEvent(chatPlayer, originalMessage);
@@ -140,6 +156,36 @@ public final class ChatEventProcessor {
         return true;
     }
 
+    private String applyCorrection(final ChatPlayer chatPlayer, final ChatUser user, final String originalMessage,
+            final boolean enforce, final boolean isCommand, final boolean isNormalCommand, final String lang) {
+        final CorrectionModule correctionModule = moduleManager.getCorrectionModule();
+        if (!enforce || correctionModule == null || !correctionModule.isEnabled() || !correctionModule.hasReplacements()) {
+            return originalMessage;
+        }
+        if (hasModuleBypass(user, "correction", correctionModule.getBypassPermission())) {
+            return originalMessage;
+        }
+        if (!chatPlayer.isCorrectionEnabled()) {
+            return originalMessage;
+        }
+        if (isCommand && (!isNormalCommand || !correctionModule.isApplyToNormalCommands())) {
+            return originalMessage;
+        }
+
+        final CorrectionResult correctionResult = correctionModule.correct(originalMessage);
+        if (!correctionResult.isCorrected()) {
+            return originalMessage;
+        }
+
+        if (correctionModule.isNotifyPlayer()) {
+            user.sendMessage(moduleManager.getMessagesModule().getCorrectionWarnMessage(new String[][] {
+                    { "%corrections%", "%original_message%", "%corrected_message%" },
+                    { String.valueOf(correctionResult.getCorrections()), originalMessage, correctionResult.getMessage() }
+            }, lang));
+        }
+        return correctionResult.getMessage();
+    }
+
     private boolean shouldSkipModule(final ModerationModule moderationModule, final ChatUser user,
             final boolean isCommand, final boolean isNormalCommand) {
         if (!(moderationModule instanceof SyntaxModerationModule)
@@ -149,7 +195,22 @@ public final class ChatEventProcessor {
                 && !isNormalCommand) {
             return true;
         }
-        return user.hasPermission(moderationModule.getBypassPermission());
+        return hasModuleBypass(user, moderationModule.getIdentityKey(), moderationModule.getBypassPermission());
+    }
+
+    private boolean hasModuleBypass(final ChatUser user, final String moduleId, final String moduleBypassPermission) {
+        if (moduleBypassPermission != null && !moduleBypassPermission.trim().isEmpty()
+                && user.hasPermission(moduleBypassPermission)) {
+            return true;
+        }
+
+        final GeneralModule generalModule = moduleManager.getGeneralModule();
+        final String globalBypassPermission = generalModule.getGlobalBypassPermission();
+        if (globalBypassPermission == null || globalBypassPermission.trim().isEmpty()) {
+            return false;
+        }
+
+        return user.hasPermission(globalBypassPermission) && !generalModule.isGlobalBypassExcluded(moduleId);
     }
 
     private void handleViolation(final ChatUser user, final ChatPlayer chatPlayer, final ModerationModule moderationModule,
@@ -160,7 +221,12 @@ public final class ChatEventProcessor {
         final String[][] placeholders = placeholders(user, chatPlayer, moderationModule, message, data.identityKey,
                 data.customModuleName, data.maxWarns, data.sourceFile, data.sourceModule, data.matchedText, result.getMessage());
         final String warnMessage = moduleManager.getMessagesModule().getWarnMessage(placeholders, chatPlayer.getLocale(), moderationModule.getName());
-        if (warnMessage != null && !warnMessage.isEmpty()) {
+        if (result.isCancelled() || result.isHide()) {
+            final String blockedMessage = moduleManager.getMessagesModule().getBlockedMessage(placeholders, chatPlayer.getLocale());
+            if (blockedMessage != null && !blockedMessage.isEmpty()) {
+                user.sendMessage(blockedMessage);
+            }
+        } else if (warnMessage != null && !warnMessage.isEmpty()) {
             user.sendWarning(warnMessage, moduleManager.getWarningDeliverySettings());
         }
 

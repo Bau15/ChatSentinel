@@ -27,6 +27,7 @@ public class PlayerJoinListener implements Listener {
     @EventHandler(ignoreCancelled = true)
     public void onPlayerJoin(PlayerJoinEvent event) {
         Player player = event.getPlayer();
+        ChatSentinel.getInstance().getChatPlatform().trackPlayer(player);
         ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BukkitChatUser(ChatSentinel.getInstance(), player,
                 ChatSentinel.getInstance().getMessageSink()));
 

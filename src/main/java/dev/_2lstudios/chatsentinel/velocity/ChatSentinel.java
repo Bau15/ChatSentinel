@@ -92,7 +92,10 @@ public class ChatSentinel {
         eventManager.register(this, new PostLoginListener(this, generalModule, chatPlayerManager, chatNotificationManager));
 
         final CommandManager commandManager = server.getCommandManager();
-        final CommandMeta commandMeta = commandManager.metaBuilder("chatsentinel").plugin(this).build();
+        final CommandMeta commandMeta = commandManager.metaBuilder("chatsentinel")
+                .aliases("autocorrect", "correction", "servermute", "muteall", "muteserver")
+                .plugin(this)
+                .build();
         final SimpleCommand chatSentinelCommand = new ChatSentinelCommand(this);
         commandManager.register(commandMeta, chatSentinelCommand);
 

@@ -15,15 +15,59 @@ public class MessagesModule {
 	}
 
 	private String getString(String lang, String path) {
-		Map<String, String> messages = locales.getOrDefault(lang, locales.getOrDefault(defaultLang, locales.getOrDefault("en", new HashMap<>())));
+		final Map<String, String> selected = locales.get(lang);
+		if (selected != null) {
+			final String value = selected.get(path);
+			if (value != null && !value.isEmpty()) {
+				return value;
+			}
+		}
 
-		return messages.getOrDefault(path, "<CHATSENTINEL STRING NOT FOUND>");
+		final Map<String, String> configuredDefault = locales.get(defaultLang);
+		if (configuredDefault != null) {
+			final String value = configuredDefault.get(path);
+			if (value != null && !value.isEmpty()) {
+				return value;
+			}
+		}
+
+		final Map<String, String> english = locales.get("en");
+		if (english != null) {
+			final String value = english.get(path);
+			if (value != null && !value.isEmpty()) {
+				return value;
+			}
+		}
+
+		return "<CHATSENTINEL STRING NOT FOUND: " + path + ">";
 	}
 
     private boolean hasString(String lang, String path) {
-        Map<String, String> messages = locales.getOrDefault(lang, locales.getOrDefault(defaultLang, locales.getOrDefault("en", new HashMap<>())));
-        String value = messages.get(path);
-        return value != null && !value.isEmpty();
+        final Map<String, String> selected = locales.get(lang);
+        if (selected != null) {
+            final String value = selected.get(path);
+            if (value != null && !value.isEmpty()) {
+                return true;
+            }
+        }
+
+        final Map<String, String> configuredDefault = locales.get(defaultLang);
+        if (configuredDefault != null) {
+            final String value = configuredDefault.get(path);
+            if (value != null && !value.isEmpty()) {
+                return true;
+            }
+        }
+
+        final Map<String, String> english = locales.get("en");
+        if (english != null) {
+            final String value = english.get(path);
+            if (value != null && !value.isEmpty()) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
 	public String getCleared(String[][] placeholders, String lang) {
@@ -54,6 +98,10 @@ public class MessagesModule {
 
 		return PlaceholderUtil.replacePlaceholders(getString(lang, moduleLowerCase + "_warn_message"), placeholders);
 	}
+
+    public String getBlockedMessage(final String[][] placeholders, final String lang) {
+        return PlaceholderUtil.replacePlaceholders(getString(lang, "blocked_message"), placeholders);
+    }
 
 	public String getFiltered(String lang) {
 		return PlaceholderUtil.replacePlaceholders(getString(lang, "filtered"));
@@ -127,7 +175,27 @@ public class MessagesModule {
         return PlaceholderUtil.replacePlaceholders(getString(lang, "delete_list_entry"), placeholders);
     }
 
-    public String getDeleteRefresh(String lang) {
-        return PlaceholderUtil.replacePlaceholders(getString(lang, "delete_refresh"));
-    }
+public String getDeleteRefresh(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "delete_refresh"));
+	}
+
+	public String getCorrectionWarnMessage(String[][] placeholders, String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_warn_message"), placeholders);
+	}
+
+	public String getCorrectionEnabled(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_enabled"));
+	}
+
+	public String getCorrectionDisabled(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_disabled"));
+	}
+
+	public String getCorrectionUsage(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_usage"));
+	}
+
+	public String getCorrectionConsoleOnly(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_console_only"));
+	}
 }

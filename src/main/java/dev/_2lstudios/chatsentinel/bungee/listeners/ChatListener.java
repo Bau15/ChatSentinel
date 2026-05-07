@@ -48,11 +48,6 @@ public class ChatListener implements Listener {
 			}
 		}
 
-		// Check if player has bypass
-		if (player.hasPermission("chatsentinel.bypass")) {
-			return;
-		}
-
 		// Get event variables
 		String message = event.getMessage();
 
@@ -64,7 +59,10 @@ public class ChatListener implements Listener {
 		ProcessedChatEvent finalResult = plugin.getChatEventProcessor().process(chatUser, message, true);
 
 		// Apply modifiers to event
-		if (finalResult.isCancelled()) {
+		if (finalResult.isHide()) {
+			event.setCancelled(true);
+			chatUser.sendMessage(plugin.getModuleManager().getChatSnapshotModule().renderProxyLine(player.getName(), finalResult.getMessage()));
+		} else if (finalResult.isCancelled()) {
 			event.setCancelled(true);
 		} else {
 			event.setMessage(finalResult.getMessage());

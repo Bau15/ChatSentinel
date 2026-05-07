@@ -4,6 +4,7 @@ import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
 import dev._2lstudios.chatsentinel.bukkit.text.BukkitMessageSink;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.platform.CommandActor;
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
@@ -46,7 +47,9 @@ public final class BukkitCommandActor implements CommandActor {
             user.sendMessage(legacyMessage);
             return;
         }
-        sender.sendMessage(legacyMessage);
+        for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+            sender.sendMessage(line);
+        }
     }
 
     @Override

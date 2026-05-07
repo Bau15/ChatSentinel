@@ -6,12 +6,10 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.stream.Collectors;
 
 import org.bukkit.configuration.Configuration;
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
-import org.bukkit.entity.Player;
 
 import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
 import dev._2lstudios.chatsentinel.bukkit.filter.BukkitFilterFileLoader;
@@ -19,6 +17,7 @@ import dev._2lstudios.chatsentinel.bukkit.utils.ConfigUtil;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileReport;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompiler;
+import dev._2lstudios.chatsentinel.shared.filter.DefaultFilterInstaller;
 import dev._2lstudios.chatsentinel.shared.filter.FilterExpressionFile;
 import dev._2lstudios.chatsentinel.shared.filter.FilterKind;
 import dev._2lstudios.chatsentinel.shared.filter.FilterModuleSettings;
@@ -47,6 +46,12 @@ public class BukkitModuleManager extends ModuleManager {
 		Configuration messagesYml = configUtil.get("%datafolder%/messages.yml");
 		BukkitFilterFileLoader filterFileLoader = new BukkitFilterFileLoader();
 		File dataFolder = ChatSentinel.getInstance().getDataFolder();
+		DefaultFilterInstaller.installIfNeeded(dataFolder, BukkitModuleManager.class.getClassLoader(), new java.util.function.Consumer<String>() {
+			@Override
+			public void accept(final String message) {
+				ChatSentinel.getInstance().getLogger().info(message);
+			}
+		});
 		List<FilterExpressionFile> blacklistFiles = filterFileLoader.load(FilterKind.BLACKLIST, dataFolder, configUtil);
 		List<FilterExpressionFile> whitelistFiles = filterFileLoader.load(FilterKind.WHITELIST, dataFolder, configUtil);
 		Configuration whitelistYml = configUtil.get("%datafolder%/whitelist.yml");
@@ -94,6 +99,7 @@ public class BukkitModuleManager extends ModuleManager {
 		getCapitalizationModule().loadData(configYml.getBoolean(capitalizationPath + ".enabled", true),
 				configYml.getString(capitalizationPath + ".custom-module-name", "Capitalization"),
 				configYml.getBoolean(configYml.contains("capitalization") ? "capitalization.correct" : "caps.replace", true),
+				configYml.getBoolean(capitalizationPath + ".capitalize-first-letter", true),
 				configYml.getInt(configYml.contains("capitalization") ? "capitalization.max-uppercase" : "caps.max", 8),
 				configYml.getInt(capitalizationPath + ".warn.max", -1),
 				configYml.getString(capitalizationPath + ".warn.notification", ""),
@@ -101,10 +107,8 @@ public class BukkitModuleManager extends ModuleManager {
 				configYml.getStringList(capitalizationPath + ".punishments").toArray(new String[0]),
 				configYml.getBoolean(capitalizationPath + ".whitelist-player-names", true),
 				configYml.getStringList(capitalizationPath + ".whitelist").toArray(new String[0]),
-				() -> ChatSentinel.getInstance().getServer().getOnlinePlayers().stream()
-						.map(Player::getName)
-						.collect(Collectors.toList()),
-				configYml.getString(capitalizationPath + ".bypass-permission", "chatsentinel.bypass.capitalization"));
+				() -> ChatSentinel.getInstance().getChatPlatform().getOnlinePlayerNamesSnapshot(),
+				configYml.getString(capitalizationPath + ".bypass-permission", ""));
 		getCooldownModule().loadData(configYml.getBoolean("cooldown.enabled"),
 				configYml.getInt("cooldown.time.repeat-global"), configYml.getInt("cooldown.time.repeat"),
 				configYml.getInt("cooldown.time.normal"), configYml.getInt("cooldown.time.command"));
@@ -117,8 +121,8 @@ public class BukkitModuleManager extends ModuleManager {
 		getServerMuteModule().loadData(configYml.getBoolean("server-mute.enabled", true),
 				configYml.getBoolean("server-mute.muted", false),
 				configYml.getString("server-mute.bypass-permission", "chatsentinel.mute.bypass"));
-		getNoMoveChatModule().loadData(configYml.getBoolean("no-move-chat.enabled", false),
-				configYml.getString("no-move-chat.bypass-permission", "chatsentinel.bypass.no-move-chat"),
+		getNoMoveChatModule().loadData(configYml.getBoolean("no-move-chat.enabled", true),
+				configYml.getString("no-move-chat.bypass-permission", ""),
 				configYml.getDouble("no-move-chat.min-distance-blocks", 5.0D),
 				configYml.getBoolean("no-move-chat.allow-teleport", true));
 		getChatSnapshotModule().loadData(configYml.getBoolean("chat-snapshot.enabled", true),
@@ -128,7 +132,9 @@ public class BukkitModuleManager extends ModuleManager {
 		getGeneralModule().loadData(configYml.getBoolean("general.sanitize", true),
 				configYml.getBoolean("general.sanitize-names", true),
 				configYml.getBoolean("general.filter-other", false),
-				configYml.getStringList("general.commands"));
+				configYml.getStringList("general.commands"),
+				configYml.getString("general.global-bypass-permission", "chatsentinel.bypass"),
+				configYml.getStringList("general.global-bypass-excluded-modules"));
 		getAllowedCharactersModule().loadData(
 				configYml.contains("allowed-characters")
 						? configYml.getBoolean("allowed-characters.enabled", false)
@@ -136,6 +142,18 @@ public class BukkitModuleManager extends ModuleManager {
 				configYml.getString("allowed-characters.mode", AllowedCharactersModule.DEFAULT_MODE),
 				configYml.getString("allowed-characters.allowed-regex", AllowedCharactersModule.DEFAULT_ALLOWED_REGEX),
 				configYml.getString("allowed-characters.replacement", AllowedCharactersModule.DEFAULT_REPLACEMENT));
+		getCorrectionModule().loadData(
+				configYml.getBoolean("correction.enabled", true),
+				configYml.getString("correction.custom-module-name", "Correction"),
+				configYml.getBoolean("correction.notify-player", true),
+				configYml.getBoolean("correction.apply-to-normal-commands", false),
+				configYml.getBoolean("correction.preserve-capitalization", true),
+				configYml.getBoolean("correction.ignore-player-names", true),
+				configYml.getInt("correction.max-corrections-per-message", 8),
+				configYml.getString("correction.bypass-permission", ""),
+				readStringMap(configYml.getConfigurationSection("correction.replacements")),
+				configYml.getStringList("correction.ignored-words"),
+				() -> ChatSentinel.getInstance().getChatPlatform().getOnlinePlayerNamesSnapshot());
 		getWhitelistModule().loadData(configYml.getBoolean("whitelist.enabled"),
 				whitelistYml.getStringList("expressions").toArray(new String[0]));
 		getBlacklistModule().loadData(blacklistCompilation.getRegistry(), activeWhitelistCompilation.getRegistry(), blacklistSettingsRegistry);
@@ -226,6 +244,20 @@ public class BukkitModuleManager extends ModuleManager {
 				section.getBoolean("warn.webhook-notification", fallback.isWebhookEnabled()),
 				commands,
 				section.getBoolean("block_raw_message", fallback.isBlockRawMessage()));
+	}
+
+	private Map<String, String> readStringMap(final ConfigurationSection section) {
+		final Map<String, String> result = new HashMap<String, String>();
+		if (section == null) {
+			return result;
+		}
+		for (String key : section.getKeys(false)) {
+			final String value = section.getString(key);
+			if (value != null) {
+				result.put(key, value);
+			}
+		}
+		return result;
 	}
 
 }

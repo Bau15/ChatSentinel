@@ -1,3 +1,4 @@
+# ChatSentinel managed default-filter-version: 2026-05-06-offense-v2
 # This plugin uses Regex for checking messages.
 expressions:
   - '(?i)\$\s*\{\s*j\s*n\s*d\s*i\s*:'

@@ -60,6 +60,7 @@ public class ChatSentinel extends JavaPlugin {
     @Override
     public void onEnable() {
         setInstance(this);
+        FoliaAPI.init(this);
 
         final ConfigUtil configUtil = new ConfigUtil(this);
         final Server server = getServer();
@@ -74,6 +75,7 @@ public class ChatSentinel extends JavaPlugin {
         chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
                 new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil));
+        chatPlatform.refreshOnlinePlayers(chatPlayerManager, chatNotificationManager, generalModule);
 
         final PluginManager pluginManager = server.getPluginManager();
         pluginManager.registerEvents(new AsyncPlayerChatListener(this, chatPlayerManager), this);
@@ -100,6 +102,9 @@ public class ChatSentinel extends JavaPlugin {
     @Override
     public void onDisable() {
         alertBus.close();
+        FoliaAPI.cancelAllTasks(this);
+        FoliaAPI.reset();
+        setInstance(null);
     }
 
     public BukkitModuleManager getModuleManager() {
@@ -112,6 +117,10 @@ public class ChatSentinel extends JavaPlugin {
 
     public BukkitMessageSink getMessageSink() {
         return messageSink;
+    }
+
+    public BukkitChatPlatform getChatPlatform() {
+        return chatPlatform;
     }
 
     public ChatEventProcessor getChatEventProcessor() {

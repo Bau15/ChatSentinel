@@ -40,11 +40,6 @@ public class ChatListener {
 			}
 		}
 
-		// Check if player has bypass
-		if (player.hasPermission("chatsentinel.bypass")) {
-			return;
-		}
-
 		// Get event variables
 		String message = event.getMessage();
 

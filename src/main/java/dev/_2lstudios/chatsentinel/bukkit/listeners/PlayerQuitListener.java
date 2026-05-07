@@ -27,6 +27,7 @@ public class PlayerQuitListener implements Listener {
     public void onPlayerQuit(PlayerQuitEvent event) {
         generalModule.removeNickname(event.getPlayer().getName());
         Player player = event.getPlayer();
+        ChatSentinel.getInstance().getChatPlatform().untrackPlayer(player.getUniqueId());
         ChatPlayer chatPlayer = chatPlayerManager.getPlayer(new BukkitChatUser(ChatSentinel.getInstance(), player,
                 ChatSentinel.getInstance().getMessageSink()));
 

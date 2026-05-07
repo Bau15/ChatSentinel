@@ -2,6 +2,7 @@ package dev._2lstudios.chatsentinel.velocity.text;
 
 import com.velocitypowered.api.proxy.Player;
 
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import dev._2lstudios.chatsentinel.shared.text.MessageSink;
 import dev._2lstudios.chatsentinel.shared.text.WarningDeliverySettings;
 import net.kyori.adventure.text.Component;
@@ -15,7 +16,9 @@ public final class VelocityMessageSink implements MessageSink<Player> {
 		if (player == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
-		player.sendMessage(deserialize(legacyMessage));
+		for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+			player.sendMessage(deserialize(line));
+		}
 	}
 
 	@Override
@@ -23,7 +26,7 @@ public final class VelocityMessageSink implements MessageSink<Player> {
 		if (player == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
-		player.sendActionBar(deserialize(legacyMessage));
+		player.sendActionBar(deserialize(LegacyText.toSection(legacyMessage).replace('\n', ' ')));
 	}
 
 	@Override
@@ -31,12 +34,11 @@ public final class VelocityMessageSink implements MessageSink<Player> {
 		if (player == null || settings == null || legacyMessage == null || legacyMessage.isEmpty()) {
 			return;
 		}
-		Component component = deserialize(legacyMessage);
 		if (settings.isMessageEnabled()) {
-			player.sendMessage(component);
+			sendMessage(player, legacyMessage);
 		}
 		if (settings.isActionBarEnabled()) {
-			player.sendActionBar(component);
+			player.sendActionBar(deserialize(LegacyText.toSection(legacyMessage).replace('\n', ' ')));
 		}
 	}
 
