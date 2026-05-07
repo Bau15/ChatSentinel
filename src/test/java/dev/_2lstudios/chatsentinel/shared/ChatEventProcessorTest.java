@@ -6,7 +6,9 @@ import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
 import dev._2lstudios.chatsentinel.shared.chat.ProcessedChatEvent;
+import dev._2lstudios.chatsentinel.shared.commands.CommandResult;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
@@ -22,6 +24,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertFalse;
 import static org.junit.Assert.assertTrue;
 
@@ -36,6 +39,23 @@ public class ChatEventProcessorTest {
         ProcessedChatEvent result = processor.process(user, "hello", true);
 
         assertTrue(result.isCancelled());
+    }
+
+    @Test
+    public void process_allowsServerMute_whenBypassPermissionPresent() {
+        TestModuleManager modules = modules();
+        modules.getServerMuteModule().loadData(true, true, "mute.bypass");
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve") {
+            @Override
+            public boolean hasPermission(String permission) {
+                return "mute.bypass".equals(permission);
+            }
+        };
+        ChatEventProcessor processor = processor(modules, new FakePlatform("BungeeCord", Collections.singletonList(user)), new ChatPlayerManager());
+
+        ProcessedChatEvent result = processor.process(user, "hello", true);
+
+        assertFalse(result.isCancelled());
     }
 
     @Test
@@ -76,6 +96,111 @@ public class ChatEventProcessorTest {
         assertFalse(result.isCancelled());
     }
 
+    @Test
+    public void process_blocksNoMove_whenGlobalBypassButNoMoveExcluded() {
+        TestModuleManager modules = modules();
+        modules.getNoMoveChatModule().loadData(true, "", 5.0D, true);
+        modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "chatsentinel.bypass",
+                Collections.singletonList("no-move-chat"));
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve") {
+            @Override
+            public boolean hasPermission(String permission) {
+                return "chatsentinel.bypass".equals(permission);
+            }
+        };
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        ProcessedChatEvent result = processor.process(user, "hello", true);
+
+        assertTrue(result.isCancelled());
+    }
+
+    @Test
+    public void process_correctsAndCapitalizes_whenBothModulesActive() {
+        TestModuleManager modules = modules();
+        modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "",
+                Collections.<String>emptyList());
+        modules.getCorrectionModule().loadData(
+                true, "Correction", true, false, true, true, 8, "",
+                createCorrectionReplacements(),
+                Collections.<String>emptyList(),
+                () -> Collections.<String>emptyList());
+        modules.getCapitalizationModule().loadData(true, "Capitalization", true, true, 8, -1, "", false,
+                new String[0], false, new String[0], () -> Collections.<String>emptyList(), "");
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatPlayerManager players = new ChatPlayerManager();
+        players.getPlayer(user).markMovementGatePassed();
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), players);
+
+        ProcessedChatEvent result = processor.process(user, "wath are you doign FRIEND OF MINE?", true);
+
+        assertEquals("What are you doing friend of mine?", result.getMessage());
+        assertFalse(result.isCancelled());
+    }
+
+    @Test
+    public void process_sendsDirectBlockedMessage_whenBlacklistCancels() {
+        TestModuleManager modules = modules();
+        Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
+        Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "You cannot write that. If you continue, you will be automatically muted.");
+        en.put("blacklist_warn_message", "warning");
+        en.put("filtered", "filtered");
+        locales.put("en", en);
+        modules.getMessagesModule().loadData("en", locales);
+        modules.getBlacklistModule().loadData(true, "Blacklist", false, false, "", 3, "notify", false,
+                new String[0], new String[] { "pvt4" }, true);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        ProcessedChatEvent result = processor.process(user, "Pvt4", true);
+
+        assertTrue(result.isCancelled());
+        assertTrue(user.getMessages().contains("You cannot write that. If you continue, you will be automatically muted."));
+    }
+
+    @Test
+    public void process_skipsCapitalization_whenGlobalBypassPresent() {
+        TestModuleManager modules = modules();
+        modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "chatsentinel.bypass",
+                Collections.<String>emptyList());
+        modules.getCapitalizationModule().loadData(true, "Capitalization", true, true, 8, -1, "", false,
+                new String[0], false, new String[0], () -> Collections.<String>emptyList(), "chatsentinel.bypass.capitalization");
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve") {
+            @Override
+            public boolean hasPermission(String permission) {
+                return "chatsentinel.bypass".equals(permission);
+            }
+        };
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        ProcessedChatEvent result = processor.process(user, "hello everyone", true);
+
+        assertEquals("hello everyone", result.getMessage());
+    }
+
+    @Test
+    public void process_capitalizesFirstLetter_whenNoBypassPresent() {
+        TestModuleManager modules = modules();
+        modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "chatsentinel.bypass",
+                Collections.<String>emptyList());
+        modules.getCapitalizationModule().loadData(true, "Capitalization", true, true, 8, -1, "", false,
+                new String[0], false, new String[0], () -> Collections.<String>emptyList(), "chatsentinel.bypass.capitalization");
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        ProcessedChatEvent result = processor.process(user, "hello everyone", true);
+
+        assertEquals("Hello everyone", result.getMessage());
+    }
+
+    private static java.util.Map<String, String> createCorrectionReplacements() {
+        java.util.Map<String, String> replacements = new java.util.HashMap<String, String>();
+        replacements.put("wath", "what");
+        replacements.put("doign", "doing");
+        return replacements;
+    }
+
     private static ChatEventProcessor processor(TestModuleManager modules, ChatPlatform platform, ChatPlayerManager players) {
         return new ChatEventProcessor(modules, players, new ChatNotificationManager(), platform, new LocalAlertBus());
     }
@@ -84,6 +209,7 @@ public class ChatEventProcessorTest {
         TestModuleManager manager = new TestModuleManager();
         Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
         Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "blocked");
         en.put("server_muted", "muted");
         en.put("no_move_chat_warn_message", "move first");
         en.put("filtered", "filtered");
@@ -156,11 +282,18 @@ public class ChatEventProcessorTest {
         public String getPlatformName() {
             return name;
         }
+
+        @Override
+        public void refreshOnlinePlayers(ChatPlayerManager chatPlayerManager,
+                ChatNotificationManager chatNotificationManager,
+                GeneralModule generalModule) {
+        }
     }
 
-    private static final class FakeUser implements ChatUser {
+    private static class FakeUser implements ChatUser {
         private final UUID uuid;
         private final String name;
+        private final List<String> messages = new ArrayList<String>();
 
         private FakeUser(UUID uuid, String name) {
             this.uuid = uuid;
@@ -183,9 +316,17 @@ public class ChatEventProcessorTest {
         public boolean hasPermission(String permission) { return false; }
 
         @Override
-        public void sendMessage(String legacyMessage) { }
+        public void sendMessage(String legacyMessage) {
+            messages.add(legacyMessage);
+        }
 
         @Override
-        public void sendWarning(String legacyMessage, WarningDeliverySettings settings) { }
+        public void sendWarning(String legacyMessage, WarningDeliverySettings settings) {
+            messages.add(legacyMessage);
+        }
+
+        private List<String> getMessages() {
+            return messages;
+        }
     }
 }

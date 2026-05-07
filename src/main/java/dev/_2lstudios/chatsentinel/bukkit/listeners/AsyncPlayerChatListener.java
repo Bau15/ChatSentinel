@@ -29,11 +29,6 @@ public class AsyncPlayerChatListener implements Listener {
 	public void onAsyncPlayerChat(AsyncPlayerChatEvent event) {
 		// Get player
 		Player player = event.getPlayer();
-
-		// Check if player has bypass
-		if (player.hasPermission("chatsentinel.bypass")) {
-			return;
-		}
 		
 		// Get event variables
 		String message = event.getMessage();
@@ -44,7 +39,7 @@ public class AsyncPlayerChatListener implements Listener {
 			return;
 		}
 
-		// Get chat player
+// Get chat player
 		BukkitChatUser chatUser = new BukkitChatUser(plugin, player, plugin.getMessageSink());
 		ChatPlayer chatPlayer = chatPlayerManager.getPlayer(chatUser);
 
@@ -53,8 +48,8 @@ public class AsyncPlayerChatListener implements Listener {
 
 		// Apply modifiers to event
 		if (finalResult.isHide()) {
-			event.setMessage(finalResult.getMessage());
-			recipents.removeIf(player1 -> player1 != player);
+			event.setCancelled(true);
+			chatUser.sendMessage(renderBukkitLine(event, player, finalResult.getMessage()));
 		} else if (finalResult.isCancelled()) {
 			event.setCancelled(true);
 		} else {

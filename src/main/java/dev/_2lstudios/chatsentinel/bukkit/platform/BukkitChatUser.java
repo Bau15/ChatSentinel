@@ -56,8 +56,9 @@ public final class BukkitChatUser implements ChatUser {
         }, new Runnable() {
             @Override
             public void run() {
+                plugin.getLogger().fine("Skipped message delivery to retired player " + player.getName());
             }
-        }, 1L);
+        }, 0L);
     }
 
     @Override
@@ -70,7 +71,8 @@ public final class BukkitChatUser implements ChatUser {
         }, new Runnable() {
             @Override
             public void run() {
+                plugin.getLogger().fine("Skipped message delivery to retired player " + player.getName());
             }
-        }, 1L);
+        }, 0L);
     }
 }

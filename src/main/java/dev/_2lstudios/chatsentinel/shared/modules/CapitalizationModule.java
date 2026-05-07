@@ -6,10 +6,12 @@ import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
+import java.util.Locale;
 import java.util.function.Supplier;
 
 public class CapitalizationModule extends ModerationModule {
     private boolean correct;
+    private boolean capitalizeFirstLetter = true;
     private int maxUppercase;
     private boolean whitelistPlayerNames;
     private String bypassPermission = "chatsentinel.bypass.capitalization";
@@ -19,11 +21,11 @@ public class CapitalizationModule extends ModerationModule {
     public void loadData(boolean enabled, String customName, boolean correct, int max, int maxWarns,
             String warnNotification, boolean webhookEnabled, String[] commands, boolean whitelistPlayerNames,
             String[] whitelist, Supplier<Collection<String>> onlinePlayerNamesSupplier) {
-        loadData(enabled, customName, correct, max, maxWarns, warnNotification, webhookEnabled, commands,
-                whitelistPlayerNames, whitelist, onlinePlayerNamesSupplier, "chatsentinel.bypass.capitalization");
+        loadData(enabled, customName, correct, false, max, maxWarns, warnNotification, webhookEnabled, commands,
+                whitelistPlayerNames, whitelist, onlinePlayerNamesSupplier, "");
     }
 
-    public void loadData(boolean enabled, String customName, boolean correct, int max, int maxWarns,
+    public void loadData(boolean enabled, String customName, boolean correct, boolean capitalizeFirstLetter, int max, int maxWarns,
             String warnNotification, boolean webhookEnabled, String[] commands, boolean whitelistPlayerNames,
             String[] whitelist, Supplier<Collection<String>> onlinePlayerNamesSupplier, String bypassPermission) {
         setEnabled(enabled);
@@ -33,14 +35,15 @@ public class CapitalizationModule extends ModerationModule {
         setCommands(commands == null ? new String[0] : commands);
         setCustomName(customName);
         this.correct = correct;
+        this.capitalizeFirstLetter = capitalizeFirstLetter;
         this.maxUppercase = max;
         this.whitelistPlayerNames = whitelistPlayerNames;
         this.whitelist = whitelist == null ? new String[0] : whitelist;
         this.onlinePlayerNamesSupplier = onlinePlayerNamesSupplier == null
-                ? Collections::<String>emptyList
+                ? Collections::emptyList
                 : onlinePlayerNamesSupplier;
         this.bypassPermission = bypassPermission == null || bypassPermission.trim().isEmpty()
-                ? "chatsentinel.bypass.capitalization"
+                ? ""
                 : bypassPermission;
     }
 
@@ -55,10 +58,33 @@ public class CapitalizationModule extends ModerationModule {
     @Override
     public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
             String originalMessage, String lang) {
-        if (!isEnabled() || uppercaseCount(removeWhitelistEntries(originalMessage)) <= maxUppercase) {
+        if (!isEnabled() || originalMessage == null || originalMessage.isEmpty()) {
             return null;
         }
-        return new ChatEventResult(originalMessage == null ? "" : originalMessage.toLowerCase(), false);
+
+        final String countedMessage = removeWhitelistEntries(originalMessage);
+        final boolean excessiveUppercase = uppercaseCount(countedMessage) > maxUppercase;
+        final boolean needsFirstLetter = capitalizeFirstLetter && startsWithLowercaseLetter(originalMessage);
+
+        if (!excessiveUppercase && !needsFirstLetter) {
+            return null;
+        }
+
+        String correctedMessage = originalMessage;
+        if (correct) {
+            if (excessiveUppercase) {
+                correctedMessage = correctedMessage.toLowerCase(Locale.ROOT);
+            }
+            if (capitalizeFirstLetter) {
+                correctedMessage = capitalizeFirstAlphabetic(correctedMessage);
+            }
+        }
+
+        final ChatEventResult result = new ChatEventResult(correctedMessage, false);
+        if (!excessiveUppercase && needsFirstLetter) {
+            result.setNotify(false);
+        }
+        return result;
     }
 
     @Override
@@ -96,5 +122,38 @@ public class CapitalizationModule extends ModerationModule {
             }
         }
         return filteredMessage;
+    }
+
+    private boolean startsWithLowercaseLetter(final String message) {
+        for (int i = 0; i < message.length(); i++) {
+            final char c = message.charAt(i);
+            if (Character.isLetter(c)) {
+                return Character.isLowerCase(c);
+            }
+            if (!Character.isWhitespace(c)) {
+                return false;
+            }
+        }
+        return false;
+    }
+
+    private String capitalizeFirstAlphabetic(final String message) {
+        for (int i = 0; i < message.length(); i++) {
+            final char c = message.charAt(i);
+            if (Character.isLetter(c)) {
+                if (Character.isUpperCase(c)) {
+                    return message;
+                }
+                final StringBuilder builder = new StringBuilder(message.length());
+                builder.append(message, 0, i);
+                builder.append(Character.toUpperCase(c));
+                builder.append(message, i + 1, message.length());
+                return builder.toString();
+            }
+            if (!Character.isWhitespace(c)) {
+                return message;
+            }
+        }
+        return message;
     }
 }

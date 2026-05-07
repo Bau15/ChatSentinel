@@ -18,12 +18,12 @@ public final class ChatSentinelCommand implements CommandExecutor, TabCompleter 
 
     @Override
     public boolean onCommand(final CommandSender sender, final Command command, final String label, final String[] args) {
-        plugin.getCommandService().execute(new BukkitCommandActor(plugin, sender, plugin.getMessageSink()), args);
+        plugin.getCommandService().execute(new BukkitCommandActor(plugin, sender, plugin.getMessageSink()), label, args);
         return true;
     }
 
     @Override
     public List<String> onTabComplete(final CommandSender sender, final Command command, final String alias, final String[] args) {
-        return plugin.getCommandService().suggest(new BukkitCommandActor(plugin, sender, plugin.getMessageSink()), args);
+        return plugin.getCommandService().suggest(new BukkitCommandActor(plugin, sender, plugin.getMessageSink()), alias, args);
     }
 }

@@ -84,16 +84,6 @@ public class FoliaAPI {
             cachedMethods.put("entity.getScheduler", getSchedulerMethod);
         }
 
-        Method executeEntityMethod = getMethod(Entity.class, "execute", Plugin.class, Runnable.class, Runnable.class, long.class);
-        if (executeEntityMethod != null) {
-            cachedMethods.put("entityScheduler.execute", executeEntityMethod);
-        }
-
-        Method runAtFixedRateEntityMethod = getMethod(Entity.class, "runAtFixedRate", Plugin.class, Consumer.class, Runnable.class, long.class, long.class);
-        if (runAtFixedRateEntityMethod != null) {
-            cachedMethods.put("entityScheduler.runAtFixedRate", runAtFixedRateEntityMethod);
-        }
-
         Method teleportAsyncMethod = getMethod(Player.class, "teleportAsync", Location.class);
         if (teleportAsyncMethod != null) {
             cachedMethods.put("player.teleportAsync", teleportAsyncMethod);
@@ -110,6 +100,27 @@ public class FoliaAPI {
             e.printStackTrace();
         }
         return null;
+    }
+
+    private static Object getEntityScheduler(final Entity entity) {
+        if (entity == null) {
+            return null;
+        }
+        final Method getSchedulerMethod = cachedMethods.get("entity.getScheduler");
+        return invokeMethod(getSchedulerMethod, entity);
+    }
+
+    private static Method getEntitySchedulerMethod(final Object entityScheduler, final String name, final Class<?>... parameterTypes) {
+        if (entityScheduler == null) {
+            return null;
+        }
+        return getMethod(entityScheduler.getClass(), name, parameterTypes);
+    }
+
+    private static void logSchedulerFailure(final Plugin plugin, final String operation) {
+        if (plugin != null) {
+            plugin.getLogger().warning("Unable to schedule Folia entity task for " + operation + "; message delivery may fail.");
+        }
     }
 
     private static Object getGlobalRegionScheduler() {
@@ -200,51 +211,101 @@ public class FoliaAPI {
     }
 
     public static void runEntityTask(Plugin plugin, Entity entity, Runnable task) {
+        if (task == null) {
+            return;
+        }
+        if (!isFolia()) {
+            if (Bukkit.isPrimaryThread()) {
+                task.run();
+            } else {
+                bS.runTask(plugin, task);
+            }
+            return;
+        }
         if (entity == null || !entity.isValid()) {
             return;
         }
-        if (isFolia()) {
-            try {
-                Method getSchedulerMethod = cachedMethods.get("entity.getScheduler");
-                Object entityScheduler = invokeMethod(getSchedulerMethod, entity);
-                Method runMethod = getMethod(entityScheduler != null ? entityScheduler.getClass() : null, "run", Plugin.class, Consumer.class, Runnable.class);
-
-                invokeMethod(runMethod, entityScheduler, plugin, (Consumer<Object>) scheduledTask -> task.run(), null);
-            } catch (Exception e) {
-                plugin.getLogger().warning("Unable to run Folia entity task: " + e.getMessage());
-            }
-        } else {
-            try {
-                bS.runTask(plugin, task);
-            } catch (Exception e) {
-                plugin.getLogger().warning("Unable to run Bukkit entity task: " + e.getMessage());
-            }
+        final Object entityScheduler = getEntityScheduler(entity);
+        final Method runMethod = getEntitySchedulerMethod(entityScheduler, "run", Plugin.class, Consumer.class, Runnable.class);
+        if (runMethod == null) {
+            logSchedulerFailure(plugin, "run");
+            return;
         }
+        invokeMethod(runMethod, entityScheduler, plugin, new Consumer<Object>() {
+            @Override
+            public void accept(final Object scheduledTask) {
+                task.run();
+            }
+        }, null);
     }
 
     public static void runTaskForEntity(Plugin pl, Entity entity, Runnable run, Runnable retired, long delay) {
-        if (!isFolia()) {
-            bS.runTaskLater(pl, run, delay);
+        if (run == null) {
             return;
         }
-        if (entity == null) return;
-        Method getSchedulerMethod = cachedMethods.get("entity.getScheduler");
-        Object entityScheduler = invokeMethod(getSchedulerMethod, entity);
-        Method executeMethod = cachedMethods.get("entityScheduler.execute");
-        invokeMethod(executeMethod, entityScheduler, pl, run, retired, delay);
+        final Runnable retiredTask = retired == null ? new Runnable() {
+            @Override
+            public void run() {
+            }
+        } : retired;
+
+        if (!isFolia()) {
+            if (Bukkit.isPrimaryThread() && delay <= 0L) {
+                run.run();
+                return;
+            }
+            bS.runTaskLater(pl, run, Math.max(0L, delay));
+            return;
+        }
+        if (entity == null || !entity.isValid()) {
+            retiredTask.run();
+            return;
+        }
+
+        final Object entityScheduler = getEntityScheduler(entity);
+        final Method executeMethod = getEntitySchedulerMethod(entityScheduler, "execute", Plugin.class, Runnable.class, Runnable.class, long.class);
+        if (executeMethod == null) {
+            logSchedulerFailure(pl, "execute");
+            retiredTask.run();
+            return;
+        }
+
+        final Object scheduled = invokeMethod(executeMethod, entityScheduler, pl, run, retiredTask, Math.max(1L, delay));
+        if (scheduled instanceof Boolean && !((Boolean) scheduled).booleanValue()) {
+            retiredTask.run();
+        }
     }
 
     public static void runTaskForEntityRepeating(Plugin pl, Entity entity, Consumer<Object> task, Runnable retired,
                                                  long initialDelay, long period) {
-        if (!isFolia()) {
-            bS.runTaskTimer(pl, () -> task.accept(null), initialDelay, period);
+        if (task == null) {
             return;
         }
-        if (entity == null) return;
-        Method getSchedulerMethod = cachedMethods.get("entity.getScheduler");
-        Object entityScheduler = invokeMethod(getSchedulerMethod, entity);
-        Method runAtFixedRateMethod = cachedMethods.get("entityScheduler.runAtFixedRate");
-        invokeMethod(runAtFixedRateMethod, entityScheduler, pl, task, retired, initialDelay, period);
+        if (!isFolia()) {
+            bS.runTaskTimer(pl, new Runnable() {
+                @Override
+                public void run() {
+                    task.accept(null);
+                }
+            }, initialDelay, period);
+            return;
+        }
+        if (entity == null || !entity.isValid()) {
+            if (retired != null) {
+                retired.run();
+            }
+            return;
+        }
+        final Object entityScheduler = getEntityScheduler(entity);
+        final Method runAtFixedRateMethod = getEntitySchedulerMethod(entityScheduler, "runAtFixedRate", Plugin.class, Consumer.class, Runnable.class, long.class, long.class);
+        if (runAtFixedRateMethod == null) {
+            logSchedulerFailure(pl, "runAtFixedRate");
+            if (retired != null) {
+                retired.run();
+            }
+            return;
+        }
+        invokeMethod(runAtFixedRateMethod, entityScheduler, pl, task, retired, Math.max(1L, initialDelay), Math.max(1L, period));
     }
 
     public static void runTaskForRegion(Plugin pl, World world, int chunkX, int chunkZ, Runnable run) {

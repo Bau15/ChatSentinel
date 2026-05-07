@@ -25,6 +25,7 @@ public class ChatPlayer {
     private double movementGateY;
     private double movementGateZ;
     private boolean spy;
+	private boolean correctionEnabled = true;
 
     public ChatPlayer(UUID uuid) {
         this.uuid = uuid;
@@ -200,11 +201,24 @@ public class ChatPlayer {
         return movementGatePassed || movedSinceJoin;
     }
 
-    public synchronized boolean isSpy() {
-        return spy;
-    }
+public synchronized boolean isSpy() {
+		return spy;
+	}
 
-    public synchronized void setSpy(boolean spy) {
-        this.spy = spy;
-    }
+	public synchronized void setSpy(boolean spy) {
+		this.spy = spy;
+	}
+
+	public synchronized boolean isCorrectionEnabled() {
+		return correctionEnabled;
+	}
+
+	public synchronized void setCorrectionEnabled(boolean correctionEnabled) {
+		this.correctionEnabled = correctionEnabled;
+	}
+
+	public synchronized boolean toggleCorrectionEnabled() {
+		this.correctionEnabled = !this.correctionEnabled;
+		return this.correctionEnabled;
+	}
 }

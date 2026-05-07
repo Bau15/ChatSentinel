@@ -1,6 +1,8 @@
 package dev._2lstudios.chatsentinel.bungee;
 
 import dev._2lstudios.chatsentinel.bungee.commands.ChatSentinelCommand;
+import dev._2lstudios.chatsentinel.bungee.commands.AutoCorrectCommand;
+import dev._2lstudios.chatsentinel.bungee.commands.ServerMuteCommand;
 import dev._2lstudios.chatsentinel.bungee.config.BungeeMutableModuleConfigStore;
 import dev._2lstudios.chatsentinel.bungee.filter.BungeeUserFilterWriter;
 import dev._2lstudios.chatsentinel.bungee.listeners.ChatListener;
@@ -82,6 +84,8 @@ public class ChatSentinel extends Plugin {
         pluginManager.registerListener(this, new PlayerDisconnectListener(generalModule, chatPlayerManager, chatNotificationManager));
         pluginManager.registerListener(this, new PostLoginListener(generalModule, chatPlayerManager, chatNotificationManager));
         pluginManager.registerCommand(this, new ChatSentinelCommand(this));
+        pluginManager.registerCommand(this, new AutoCorrectCommand(this));
+        pluginManager.registerCommand(this, new ServerMuteCommand(this));
 
         getProxy().getScheduler().schedule(this, new Runnable() {
             @Override

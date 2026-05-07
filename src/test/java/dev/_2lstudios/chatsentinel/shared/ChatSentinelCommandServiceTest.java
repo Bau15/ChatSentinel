@@ -8,6 +8,7 @@ import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
 import dev._2lstudios.chatsentinel.shared.filter.UserFilterWriter;
 import dev._2lstudios.chatsentinel.shared.filter.UserRegexAddService;
 import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
@@ -55,6 +56,37 @@ public class ChatSentinelCommandServiceTest {
         service.execute(new FakeActor("Admin"), new String[] { "mutechat", "toggle" });
 
         assertEquals("server-mute.muted=true", store.lastWrite);
+    }
+
+    @Test
+    public void servermuteAlias_writesServerMutePath_whenNoArgsToggle() {
+        TestModuleManager modules = modules();
+        FakeConfigStore store = new FakeConfigStore();
+        ChatSentinelCommandService service = service(modules, new FakePlatform(), store, new FakeWriter());
+
+        service.execute(new FakeActor("Admin"), "servermute", new String[0]);
+
+        assertEquals("server-mute.muted=true", store.lastWrite);
+    }
+
+    @Test
+    public void servermuteAlias_suggestsModes() {
+        TestModuleManager modules = modules();
+        ChatSentinelCommandService service = service(modules, new FakePlatform(), new FakeConfigStore(), new FakeWriter());
+
+        List<String> suggestions = service.suggest(new FakeActor("Admin"), "servermute", new String[] { "o" });
+
+        assertEquals(java.util.Arrays.asList("on", "off"), suggestions);
+    }
+
+    @Test
+    public void servermuteAlias_updatesInMemoryMutedState() {
+        TestModuleManager modules = modules();
+        ChatSentinelCommandService service = service(modules, new FakePlatform(), new FakeConfigStore(), new FakeWriter());
+
+        service.execute(new FakeActor("Admin"), "servermute", new String[] { "on" });
+
+        assertTrue(modules.getServerMuteModule().isMuted());
     }
 
     @Test
@@ -180,6 +212,11 @@ public class ChatSentinelCommandServiceTest {
 
         @Override
         public String getPlatformName() { return "Test"; }
+
+        @Override
+        public void refreshOnlinePlayers(ChatPlayerManager chatPlayerManager,
+                ChatNotificationManager chatNotificationManager,
+                GeneralModule generalModule) { }
     }
 
     private static final class FakeUser implements ChatUser {

@@ -4,6 +4,10 @@ import java.util.Collection;
 import java.util.Optional;
 import java.util.UUID;
 
+import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
+
 public interface ChatPlatform {
     Collection<ChatUser> getOnlineUsers();
 
@@ -16,4 +20,8 @@ public interface ChatPlatform {
     void runAsync(Runnable runnable);
 
     String getPlatformName();
+
+    void refreshOnlinePlayers(ChatPlayerManager chatPlayerManager,
+            ChatNotificationManager chatNotificationManager,
+            GeneralModule generalModule);
 }

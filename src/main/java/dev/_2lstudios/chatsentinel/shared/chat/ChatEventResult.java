@@ -9,6 +9,7 @@ public class ChatEventResult {
     private String message;
     private boolean cancelled;
     private boolean hide;
+    private boolean notify = true;
     private Optional<ModerationViolation> violation;
 
     public ChatEventResult(String message, boolean cancelled, boolean hide) {
@@ -20,6 +21,14 @@ public class ChatEventResult {
 
     public ChatEventResult(String message, boolean cancelled) {
         this(message, cancelled, false);
+    }
+
+    public boolean isNotify() {
+        return notify;
+    }
+
+    public void setNotify(final boolean notify) {
+        this.notify = notify;
     }
 
     public String getMessage() {

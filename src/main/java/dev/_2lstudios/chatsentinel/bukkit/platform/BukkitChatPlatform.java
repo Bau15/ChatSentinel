@@ -3,9 +3,15 @@ package dev._2lstudios.chatsentinel.bukkit.platform;
 import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
 import dev._2lstudios.chatsentinel.bukkit.text.BukkitMessageSink;
 import dev._2lstudios.chatsentinel.bukkit.utils.FoliaAPI;
+import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import org.bukkit.Bukkit;
+import org.bukkit.Location;
 import org.bukkit.Server;
 import org.bukkit.entity.Player;
 
@@ -46,7 +52,9 @@ public final class BukkitChatPlatform implements ChatPlatform {
         FoliaAPI.runTask(plugin, new Runnable() {
             @Override
             public void run() {
-                server.getConsoleSender().sendMessage(legacyMessage);
+                for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+                    server.getConsoleSender().sendMessage(line);
+                }
             }
         });
     }
@@ -69,5 +77,26 @@ public final class BukkitChatPlatform implements ChatPlatform {
     @Override
     public String getPlatformName() {
         return "Bukkit";
+    }
+
+    @Override
+    public void refreshOnlinePlayers(final ChatPlayerManager chatPlayerManager,
+            final ChatNotificationManager chatNotificationManager,
+            final GeneralModule generalModule) {
+        for (Player player : server.getOnlinePlayers()) {
+            final BukkitChatUser user = new BukkitChatUser(plugin, player, messageSink);
+            final ChatPlayer chatPlayer = chatPlayerManager.getPlayer(user);
+            chatPlayer.setLocale(null);
+            final Location location = player.getLocation();
+            chatPlayer.resetMovementGate(location.getWorld() == null ? "" : location.getWorld().getName(),
+                    location.getX(), location.getY(), location.getZ());
+            if (player.hasPermission("chatsentinel.notify")) {
+                chatNotificationManager.addPlayer(chatPlayer);
+            } else if (chatNotificationManager.containsPlayer(chatPlayer)) {
+                chatNotificationManager.removePlayer(chatPlayer);
+            }
+            generalModule.addNickname(player.getName());
+        }
+        generalModule.compileNicknamesPattern();
     }
 }

@@ -3,7 +3,9 @@ package dev._2lstudios.chatsentinel.bungee.platform;
 import dev._2lstudios.chatsentinel.bungee.text.BungeeMessageSink;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.platform.CommandActor;
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import net.md_5.bungee.api.CommandSender;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
 public final class BungeeCommandActor implements CommandActor {
@@ -43,7 +45,9 @@ public final class BungeeCommandActor implements CommandActor {
             user.sendMessage(legacyMessage);
             return;
         }
-        sender.sendMessage(legacyMessage);
+        for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+            sender.sendMessage(TextComponent.fromLegacyText(line));
+        }
     }
 
     @Override

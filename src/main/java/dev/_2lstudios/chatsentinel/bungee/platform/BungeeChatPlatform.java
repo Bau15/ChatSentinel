@@ -2,9 +2,15 @@ package dev._2lstudios.chatsentinel.bungee.platform;
 
 import dev._2lstudios.chatsentinel.bungee.ChatSentinel;
 import dev._2lstudios.chatsentinel.bungee.text.BungeeMessageSink;
+import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
+import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
+import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
+import dev._2lstudios.chatsentinel.shared.text.LegacyText;
 import net.md_5.bungee.api.ProxyServer;
+import net.md_5.bungee.api.chat.TextComponent;
 import net.md_5.bungee.api.connection.ProxiedPlayer;
 
 import java.util.ArrayList;
@@ -41,7 +47,9 @@ public final class BungeeChatPlatform implements ChatPlatform {
 
     @Override
     public void sendConsoleMessage(final String legacyMessage) {
-        proxy.getConsole().sendMessage(legacyMessage);
+        for (final String line : LegacyText.toSectionLines(legacyMessage)) {
+            proxy.getConsole().sendMessage(TextComponent.fromLegacyText(line));
+        }
     }
 
     @Override
@@ -57,5 +65,24 @@ public final class BungeeChatPlatform implements ChatPlatform {
     @Override
     public String getPlatformName() {
         return "BungeeCord";
+    }
+
+    @Override
+    public void refreshOnlinePlayers(final ChatPlayerManager chatPlayerManager,
+            final ChatNotificationManager chatNotificationManager,
+            final GeneralModule generalModule) {
+        for (ProxiedPlayer player : proxy.getPlayers()) {
+            final BungeeChatUser user = new BungeeChatUser(player, messageSink);
+            final ChatPlayer chatPlayer = chatPlayerManager.getPlayer(user);
+            chatPlayer.setLocale(null);
+            chatPlayer.markMovementGatePassed();
+            if (player.hasPermission("chatsentinel.notify")) {
+                chatNotificationManager.addPlayer(chatPlayer);
+            } else if (chatNotificationManager.containsPlayer(chatPlayer)) {
+                chatNotificationManager.removePlayer(chatPlayer);
+            }
+            generalModule.addNickname(player.getName());
+        }
+        generalModule.compileNicknamesPattern();
     }
 }

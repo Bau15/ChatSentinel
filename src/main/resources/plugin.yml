@@ -10,3 +10,45 @@ folia-supported: true
 commands:
   chatsentinel:
     description: "Main command for ChatSentinel plugin"
+    aliases:
+      - autocorrect
+      - correction
+      - servermute
+      - muteall
+      - muteserver
+
+permissions:
+  chatsentinel.admin:
+    description: "Access to all ChatSentinel staff commands."
+    default: op
+    children:
+      chatsentinel.help: true
+      chatsentinel.reload: true
+      chatsentinel.clear: true
+      chatsentinel.notify: true
+      chatsentinel.spy: true
+      chatsentinel.delete: true
+      chatsentinel.module: true
+      chatsentinel.regex.add: true
+      chatsentinel.mute: true
+  chatsentinel.mute.bypass:
+    description: "Allows chatting while server mute is active."
+    default: op
+  chatsentinel.bypass:
+    description: "Global moderation bypass except excluded UX modules."
+    default: op
+  chatsentinel.bypass.capitalization:
+    description: "Bypass capitalization correction."
+    default: op
+  chatsentinel.bypass.correction:
+    description: "Bypass correction module."
+    default: false
+  chatsentinel.clear.bypass:
+    description: "Do not receive blank-line chat clears."
+    default: op
+  chatsentinel.notify:
+    description: "Receive ChatSentinel notifications."
+    default: op
+  chatsentinel.spy:
+    description: "Toggle ChatSentinel spy alerts."
+    default: op

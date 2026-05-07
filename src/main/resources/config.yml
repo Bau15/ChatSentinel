@@ -39,8 +39,8 @@ server-mute:
 no-move-chat:
   # Bukkit backend only. BungeeCord/Velocity cannot observe player movement.
   # Player may chat after moving this many blocks from join location, or after teleport if allow-teleport is true.
-  enabled: false
-  bypass-permission: "chatsentinel.bypass.no-move-chat"
+  enabled: true
+  bypass-permission: ""
   min-distance-blocks: 5.0
   allow-teleport: true
 
@@ -61,6 +61,16 @@ general:
 
   # Filter and remove non-latin characters from all messages.
   filter-other: false
+
+  # Players with this permission bypass enforcement modules by default.
+  # This global bypass intentionally does not skip UX correction modules listed below.
+  global-bypass-permission: "chatsentinel.bypass"
+
+  # Modules ignored by global-bypass-permission.
+  # OPs should still get correction by default.
+  global-bypass-excluded-modules:
+    - correction
+    - no-move-chat
 
   # Commands that will be treated as normal messages
   commands:
@@ -87,7 +97,130 @@ allowed-characters:
   allowed-regex: "[A-Za-z0-9 _.,!?@#:/;\\-()\\[\\]{}'\"]"
   replacement: ""
 
-# Checks if the player is using blacklisted words.
+# Corrects common misspelled words in chat.
+# This module is a UX feature, not a punishment module.
+# It only replaces exact whole words listed under replacements.
+correction:
+  enabled: true
+  custom-module-name: "Correction"
+  notify-player: true
+  apply-to-normal-commands: false
+  preserve-capitalization: true
+  ignore-player-names: true
+  max-corrections-per-message: 8
+  bypass-permission: ""
+
+  # Words that must never be corrected even if someone later adds them to replacements.
+  # Keep Minecraft slang, acronyms, commands, metrics, and technical abbreviations here.
+  ignored-words:
+    - afk
+    - brb
+    - gg
+    - ez
+    - idk
+    - lmk
+    - tbh
+    - imo
+    - imho
+    - btw
+    - omg
+    - lol
+    - lmao
+    - rofl
+    - ty
+    - thx
+    - pls
+    - plz
+    - tps
+    - fps
+    - ms
+    - kb
+    - pvp
+    - pve
+    - tp
+    - tpa
+    - rtp
+    - msg
+    - dm
+    - swbe
+    - sbe
+
+  # Format: wrong-word: "correct-word"
+  # Keys are read case-insensitively. Values keep configured spelling.
+  replacements:
+    teh: "the"
+    hte: "the"
+    thhe: "the"
+    adn: "and"
+    nad: "and"
+    taht: "that"
+    thta: "that"
+    tihs: "this"
+    thsi: "this"
+    tthis: "this"
+    whta: "what"
+    waht: "what"
+    wath: "what"
+    doign: "doing"
+    doig: "doing"
+    doin: "doing"
+    wher: "where"
+    wheer: "where"
+    werhe: "where"
+    hwere: "where"
+    wich: "which"
+    whcih: "which"
+    hwich: "which"
+    becuase: "because"
+    becasue: "because"
+    bceause: "because"
+    beacuse: "because"
+    becausee: "because"
+    cosider: "consider"
+    considder: "consider"
+    freind: "friend"
+    firend: "friend"
+    frend: "friend"
+    firiend: "friend"
+    recieve: "receive"
+    recieved: "received"
+    recieving: "receiving"
+    receieve: "receive"
+    seperate: "separate"
+    seperated: "separated"
+    seperately: "separately"
+    definately: "definitely"
+    definatly: "definitely"
+    definetly: "definitely"
+    definitly: "definitely"
+    occassion: "occasion"
+    occassionally: "occasionally"
+    ocasionally: "occasionally"
+    neccessary: "necessary"
+    necesary: "necessary"
+    neccesary: "necessary"
+    accomodate: "accommodate"
+    acommodate: "accommodate"
+    tommorow: "tomorrow"
+    tomorow: "tomorrow"
+    tommorrow: "tomorrow"
+    yesturday: "yesterday"
+    yestarday: "yesterday"
+    beleive: "believe"
+    belive: "believe"
+    beleiving: "believing"
+    truely: "truly"
+    realy: "really"
+    reallly: "really"
+    probaly: "probably"
+    probablly: "probably"
+    probobly: "probably"
+    alwasy: "always"
+    awlays: "always"
+    alot: "a lot"
+    atleast: "at least"
+
+  # Checks if the player is using blacklisted words.
 blacklist:
   enabled: true
 
@@ -141,6 +274,9 @@ blacklist:
     user:
       enabled: true
       custom-module-name: "Custom"
+    client:
+      enabled: true
+      custom-module-name: "Client"
 
 # Corrects excessive capitalization in player messages.
 capitalization:
@@ -151,6 +287,9 @@ capitalization:
 
   # If this is true it will correct excessive uppercase with lowercase text.
   correct: true
+
+  # If enabled, lowercase-starting normal sentences are corrected to uppercase first letter.
+  capitalize-first-letter: true
 
   # Maximum amount of uppercase letters allowed.
   max-uppercase: 8

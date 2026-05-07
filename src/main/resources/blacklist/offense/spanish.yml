@@ -1,19 +1,37 @@
-# This plugin uses Regex for checking messages.
+# ChatSentinel managed default-filter-version: 2026-05-06-offense-v2
+# Spanish offense rules restored from original config with bounded leet/separator support.
 expressions:
-  - boludito
-  - chot(o|a)
-  - concha
-  - (ca|k)gon
-  - forrit(o|a)
-  - fracasad(o|a)
-  - garcha
-  - imbecil
-  - maric(on|a)
-  - mierda
-  - ojete
-  - put(o|a|ito)
-  - pija
-  - pelotudo
-  - poronga
-  - rat(a|ita)
-  - ( |^)trol(o|a)( |&)
+  # Original: boludito; broadened to boludo/boluda/boludito/boludita.
+  - '(?:^|[^\p{L}\p{N}_])b[\W_]{0,2}[o0][\W_]{0,2}l[\W_]{0,2}[uv][\W_]{0,2}d(?:[\W_]{0,2}[o0a4@]|[\W_]{0,2}[i1!][\W_]{0,2}[t7][\W_]{0,2}[o0a4@])(?:$|[^\p{L}\p{N}_])'
+  # Original: chot(o|a)
+  - '(?:^|[^\p{L}\p{N}_])c[\W_]{0,2}h[\W_]{0,2}[o0][\W_]{0,2}[t7][\W_]{0,2}[o0a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: concha
+  - '(?:^|[^\p{L}\p{N}_])c[\W_]{0,2}[o0][\W_]{0,2}n[\W_]{0,2}c[\W_]{0,2}h[\W_]{0,2}[a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: (ca|k)gon
+  - '(?:^|[^\p{L}\p{N}_])(?:c[\W_]{0,2}[a4@]|k)[\W_]{0,2}g[\W_]{0,2}[o0][\W_]{0,2}n(?:$|[^\p{L}\p{N}_])'
+  # Original: forrit(o|a)
+  - '(?:^|[^\p{L}\p{N}_])f[\W_]{0,2}[o0][\W_]{0,2}r[\W_]{0,2}r[\W_]{0,2}[i1!][\W_]{0,2}[t7][\W_]{0,2}[o0a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: fracasad(o|a)
+  - '(?:^|[^\p{L}\p{N}_])f[\W_]{0,2}r[\W_]{0,2}[a4@][\W_]{0,2}c[\W_]{0,2}[a4@][\W_]{0,2}s[\W_]{0,2}[a4@][\W_]{0,2}d[\W_]{0,2}[o0a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: garcha
+  - '(?:^|[^\p{L}\p{N}_])g[\W_]{0,2}[a4@][\W_]{0,2}r[\W_]{0,2}c[\W_]{0,2}h[\W_]{0,2}[a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: imbecil
+  - '(?:^|[^\p{L}\p{N}_])[i1!][\W_]{0,2}m[\W_]{0,2}b[\W_]{0,2}[e3][\W_]{0,2}c[\W_]{0,2}[i1!][\W_]{0,2}l(?:$|[^\p{L}\p{N}_])'
+  # Original: maric(on|a)
+  - '(?:^|[^\p{L}\p{N}_])m[\W_]{0,2}[a4@][\W_]{0,2}r[\W_]{0,2}[i1!][\W_]{0,2}c(?:[\W_]{0,2}[o0][\W_]{0,2}n|[\W_]{0,2}[a4@])(?:$|[^\p{L}\p{N}_])'
+  # Original: mierda
+  - '(?:^|[^\p{L}\p{N}_])m[\W_]{0,2}[i1!][\W_]{0,2}[e3][\W_]{0,2}r[\W_]{0,2}d[\W_]{0,2}[a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: ojete
+  - '(?:^|[^\p{L}\p{N}_])[o0][\W_]{0,2}j[\W_]{0,2}[e3][\W_]{0,2}[t7][\W_]{0,2}[e3](?:$|[^\p{L}\p{N}_])'
+  # Original: put(o|a|ito); detects pta, put4, pvt4, p v t a.
+  - '(?:^|[^\p{L}\p{N}_])p[\W_]{0,2}(?:[uv][\W_]{0,2})?[t7][\W_]{0,2}(?:[o0a4@]|[i1!][\W_]{0,2}[t7][\W_]{0,2}[o0a4@])(?:$|[^\p{L}\p{N}_])'
+  # Original: pija
+  - '(?:^|[^\p{L}\p{N}_])p[\W_]{0,2}[i1!][\W_]{0,2}j[\W_]{0,2}[a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: pelotudo
+  - '(?:^|[^\p{L}\p{N}_])p[\W_]{0,2}[e3][\W_]{0,2}l[\W_]{0,2}[o0][\W_]{0,2}[t7][\W_]{0,2}[uv][\W_]{0,2}d[\W_]{0,2}[o0a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: poronga
+  - '(?:^|[^\p{L}\p{N}_])p[\W_]{0,2}[o0][\W_]{0,2}r[\W_]{0,2}[o0][\W_]{0,2}n[\W_]{0,2}g[\W_]{0,2}[a4@](?:$|[^\p{L}\p{N}_])'
+  # Original: rat(a|ita)
+  - '(?:^|[^\p{L}\p{N}_])r[\W_]{0,2}[a4@][\W_]{0,2}[t7](?:[\W_]{0,2}[a4@]|[\W_]{0,2}[i1!][\W_]{0,2}[t7][\W_]{0,2}[a4@])(?:$|[^\p{L}\p{N}_])'
+  # Original: ( |^)trol(o|a)( |&)
+  - '(?:^|[^\p{L}\p{N}_])[t7][\W_]{0,2}r[\W_]{0,2}[o0][\W_]{0,2}l[\W_]{0,2}[o0a4@](?:$|[^\p{L}\p{N}_])'

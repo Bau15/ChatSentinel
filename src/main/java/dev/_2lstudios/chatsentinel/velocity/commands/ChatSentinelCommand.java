@@ -16,12 +16,14 @@ public final class ChatSentinelCommand implements SimpleCommand {
 
     @Override
     public void execute(final Invocation invocation) {
-        plugin.getCommandService().execute(new VelocityCommandActor(invocation.source(), plugin.getMessageSink()), invocation.arguments());
+        plugin.getCommandService().execute(new VelocityCommandActor(invocation.source(), plugin.getMessageSink()), invocation.alias(), invocation.arguments());
     }
 
     @Override
     public CompletableFuture<List<String>> suggestAsync(final Invocation invocation) {
-        return CompletableFuture.completedFuture(plugin.getCommandService().suggest(
-                new VelocityCommandActor(invocation.source(), plugin.getMessageSink()), invocation.arguments()));
+        final String alias = invocation.alias();
+        final List<String> results = plugin.getCommandService().suggest(
+                new VelocityCommandActor(invocation.source(), plugin.getMessageSink()), alias, invocation.arguments());
+        return CompletableFuture.completedFuture(results);
     }
 }

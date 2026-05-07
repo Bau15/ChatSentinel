@@ -24,11 +24,6 @@ public class ServerCommandListener implements Listener {
 		// Get player
 		Player player = event.getPlayer();
 
-		// Check if player has bypass
-		if (player.hasPermission("chatsentinel.bypass")) {
-			return;
-		}
-		
 		// Get event variables
 		String message = event.getMessage();
 		// Get chat player

@@ -74,6 +74,7 @@ public class ChatSentinel extends JavaPlugin {
         chatEventProcessor = new ChatEventProcessor(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform, alertBus);
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
                 new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil));
+        chatPlatform.refreshOnlinePlayers(chatPlayerManager, chatNotificationManager, generalModule);
 
         final PluginManager pluginManager = server.getPluginManager();
         pluginManager.registerEvents(new AsyncPlayerChatListener(this, chatPlayerManager), this);

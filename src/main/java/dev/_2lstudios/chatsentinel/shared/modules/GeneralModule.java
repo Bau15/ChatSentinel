@@ -1,9 +1,12 @@
 package dev._2lstudios.chatsentinel.shared.modules;
 
 import java.text.Normalizer;
+import java.util.Arrays;
 import java.util.Collection;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.Locale;
+import java.util.Set;
 import java.util.regex.Pattern;
 
 import dev._2lstudios.chatsentinel.shared.utils.PatternUtil;
@@ -16,13 +19,35 @@ public class GeneralModule {
 	private boolean sanitize;
 	private boolean sanitizeNames;
 	private boolean filterOther;
+	private String globalBypassPermission = "chatsentinel.bypass";
+	private Set<String> globalBypassExcludedModules = new HashSet<>();
 
 	public void loadData(boolean sanitize, boolean sanitizeNames, boolean filterOther,
 			Collection<String> commands) {
+		loadData(sanitize, sanitizeNames, filterOther, commands, "chatsentinel.bypass",
+				Arrays.asList("capitalization", "correction"));
+	}
+
+	public void loadData(boolean sanitize, boolean sanitizeNames, boolean filterOther,
+			Collection<String> commands, String globalBypassPermission,
+			Collection<String> globalBypassExcludedModules) {
 		this.sanitize = sanitize;
 		this.sanitizeNames = sanitizeNames;
 		this.filterOther = filterOther;
-		this.commands = commands;
+		this.commands = commands == null ? Collections.<String>emptyList() : commands;
+		this.globalBypassPermission = globalBypassPermission == null || globalBypassPermission.trim().isEmpty()
+				? "chatsentinel.bypass"
+				: globalBypassPermission.trim();
+
+		final Set<String> excluded = new HashSet<>();
+		if (globalBypassExcludedModules != null) {
+			for (String moduleId : globalBypassExcludedModules) {
+				if (moduleId != null && !moduleId.trim().isEmpty()) {
+					excluded.add(normalizeModuleId(moduleId));
+				}
+			}
+		}
+		this.globalBypassExcludedModules = excluded;
 	}
 
 	public boolean isSanitizeEnabled() {
@@ -117,5 +142,17 @@ public class GeneralModule {
 
 	public boolean isFilterOther() {
 		return filterOther;
+	}
+
+	public String getGlobalBypassPermission() {
+		return globalBypassPermission;
+	}
+
+	public boolean isGlobalBypassExcluded(final String moduleId) {
+		return globalBypassExcludedModules.contains(normalizeModuleId(moduleId));
+	}
+
+	public String normalizeModuleId(final String moduleId) {
+		return moduleId == null ? "" : moduleId.trim().toLowerCase(Locale.ROOT).replace('_', '-');
 	}
 }
