@@ -11,16 +11,26 @@ public class ChatEventResult {
     private boolean hide;
     private boolean notify = true;
     private Optional<ModerationViolation> violation;
+    private Optional<String> playerMessage;
 
     public ChatEventResult(String message, boolean cancelled, boolean hide) {
         this.message = message;
         this.cancelled = cancelled;
         this.hide = hide;
         this.violation = Optional.empty();
+        this.playerMessage = Optional.empty();
     }
 
     public ChatEventResult(String message, boolean cancelled) {
         this(message, cancelled, false);
+    }
+
+    public Optional<String> getPlayerMessage() {
+        return playerMessage;
+    }
+
+    public void setPlayerMessage(final String playerMessage) {
+        this.playerMessage = Optional.of(Objects.requireNonNull(playerMessage, "playerMessage"));
     }
 
     public boolean isNotify() {

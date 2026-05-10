@@ -11,9 +11,12 @@ import dev._2lstudios.chatsentinel.bukkit.ChatSentinel;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
 import dev._2lstudios.chatsentinel.shared.chat.ProcessedChatEvent;
+import dev._2lstudios.chatsentinel.shared.modules.ChatSnapshotModule;
+import dev._2lstudios.chatsentinel.bukkit.utils.FoliaAPI;
 
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.Optional;
 import java.util.UUID;
 
 public class AsyncPlayerChatListener implements Listener {
@@ -60,8 +63,13 @@ public class AsyncPlayerChatListener implements Listener {
 		if (!event.isCancelled()) {
 			chatPlayer.addLastMessage(finalResult.getMessage(), System.currentTimeMillis());
 			if (!message.startsWith("/")) {
-				plugin.getModuleManager().getChatSnapshotModule().record(player.getUniqueId(), player.getName(),
-						finalResult.getMessage(), renderBukkitLine(event, player, finalResult.getMessage()), recipientIds(recipents));
+				final String renderedLine = renderBukkitLine(event, player, finalResult.getMessage());
+				final Optional<ChatSnapshotModule.Entry> entry = plugin.getModuleManager().getChatSnapshotModule().record(
+						player.getUniqueId(), player.getName(), finalResult.getMessage(), renderedLine, recipientIds(recipents));
+				if (entry.isPresent() && plugin.getModuleManager().getChatSnapshotModule().isLiveDeleteClickEnabled()) {
+					event.setCancelled(true);
+					sendLiveDeleteBroadcast(recipents, renderedLine, entry.get());
+				}
 			}
 		}
 	}
@@ -71,6 +79,31 @@ public class AsyncPlayerChatListener implements Listener {
 			return String.format(event.getFormat(), player.getDisplayName(), message);
 		} catch (RuntimeException exception) {
 			return "<" + player.getName() + "> " + message;
+		}
+	}
+
+	private void sendLiveDeleteBroadcast(final Collection<Player> recipients, final String renderedLine,
+			final ChatSnapshotModule.Entry entry) {
+		final ChatSnapshotModule snapshotModule = plugin.getModuleManager().getChatSnapshotModule();
+		for (final Player recipient : recipients) {
+			if (recipient == null) {
+				continue;
+			}
+			FoliaAPI.runTaskForEntity(plugin, recipient, new Runnable() {
+				@Override
+				public void run() {
+					if (!recipient.isOnline()) {
+						return;
+					}
+					if (recipient.hasPermission(snapshotModule.getLiveDeletePermission())) {
+						plugin.getMessageSink().sendClickablePrefixMessage(recipient, snapshotModule.getLiveDeletePrefix(),
+								snapshotModule.getLiveDeleteHover(), snapshotModule.buildLiveDeleteCommand(entry.getId()),
+								renderedLine);
+						return;
+					}
+					plugin.getMessageSink().sendMessage(recipient, renderedLine);
+				}
+			}, null, 0L);
 		}
 	}
 

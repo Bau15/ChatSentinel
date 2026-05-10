@@ -10,6 +10,8 @@ import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerQuitListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.PlayerTeleportListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.ServerCommandListener;
 import dev._2lstudios.chatsentinel.bukkit.listeners.SocialSpyBookListener;
+import dev._2lstudios.chatsentinel.bukkit.listeners.SocialSpyAnvilListener;
+import dev._2lstudios.chatsentinel.bukkit.gui.SocialSpyMenu;
 import dev._2lstudios.chatsentinel.bukkit.listeners.SocialSpySignListener;
 import dev._2lstudios.chatsentinel.bukkit.modules.BukkitModuleManager;
 import dev._2lstudios.chatsentinel.bukkit.platform.BukkitChatPlatform;
@@ -50,6 +52,7 @@ public class ChatSentinel extends JavaPlugin {
     private ChatEventProcessor chatEventProcessor;
     private ChatSentinelCommandService commandService;
     private SocialSpyService socialSpyService;
+    private SocialSpyMenu socialSpyMenu;
     private AlertBus alertBus = new LocalAlertBus();
     private String redisInstanceId;
 
@@ -81,6 +84,7 @@ public class ChatSentinel extends JavaPlugin {
         commandService = new ChatSentinelCommandService(moduleManager, chatPlayerManager, chatNotificationManager, chatPlatform,
                 new UserRegexAddService(new BukkitUserFilterWriter(getDataFolder())), new BukkitMutableModuleConfigStore(this, configUtil),
                 socialSpyService);
+        socialSpyMenu = new SocialSpyMenu(this, socialSpyService);
         chatPlatform.refreshOnlinePlayers(chatPlayerManager, chatNotificationManager, generalModule);
 
         final PluginManager pluginManager = server.getPluginManager();
@@ -91,6 +95,7 @@ public class ChatSentinel extends JavaPlugin {
         pluginManager.registerEvents(new PlayerQuitListener(moduleManager.getGeneralModule(), chatPlayerManager, chatNotificationManager), this);
         pluginManager.registerEvents(new SocialSpySignListener(socialSpyService), this);
         pluginManager.registerEvents(new SocialSpyBookListener(socialSpyService), this);
+        pluginManager.registerEvents(new SocialSpyAnvilListener(socialSpyService), this);
         pluginManager.registerEvents(new ServerCommandListener(chatPlayerManager, chatNotificationManager, socialSpyService), this);
 
         final ChatSentinelCommand command = new ChatSentinelCommand(this);
@@ -141,6 +146,10 @@ public class ChatSentinel extends JavaPlugin {
 
     public SocialSpyService getSocialSpyService() {
         return socialSpyService;
+    }
+
+    public SocialSpyMenu getSocialSpyMenu() {
+        return socialSpyMenu;
     }
 
     private void logCompileReport(final FilterCompileReport report) {

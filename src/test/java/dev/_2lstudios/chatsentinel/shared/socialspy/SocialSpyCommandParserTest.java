@@ -52,4 +52,29 @@ public class SocialSpyCommandParserTest {
     public void emptyPrivateMessageIsIgnored() {
         assertFalse(parser.parse("/msg Steve").isSpy());
     }
+
+    @Test
+    public void dmCommandIsPrivateMessage() {
+        assertEquals(SocialSpyModuleId.MESSAGES, parser.parse("/dm Steve secret").getModuleId());
+    }
+
+    @Test
+    public void directmessageCommandIsPrivateMessage() {
+        assertEquals(SocialSpyModuleId.MESSAGES, parser.parse("/directmessage Steve secret").getModuleId());
+    }
+
+    @Test
+    public void respondCommandIsReplyPrivateMessage() {
+        assertEquals("<reply>", parser.parse("/respond secret").getTarget());
+    }
+
+    @Test
+    public void namespacedMsgCommandNormalizesNamespaceAndParses() {
+        assertEquals(SocialSpyModuleId.MESSAGES, parser.parse("/minecraft:msg Steve secret").getModuleId());
+    }
+
+    @Test
+    public void loginCommandReturnsNone() {
+        assertFalse(parser.parse("/login password").isSpy());
+    }
 }

@@ -3,6 +3,8 @@ package dev._2lstudios.chatsentinel.shared.modules;
 import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 
+import java.util.Locale;
+
 public class CooldownModerationModule extends ModerationModule {
 	private int repeatTimeGlobal;
 	private int repeatTime;
@@ -22,40 +24,57 @@ public class CooldownModerationModule extends ModerationModule {
 		this.commandTime = commandTime;
 	}
 
-	public float getRemainingTime(ChatPlayer chatPlayer, String message) {
-		if (isEnabled() && message != null) {
-			long currentTime = System.currentTimeMillis();
-			boolean isCommand = message.startsWith("/");
-			long lastMessageTimePassed = currentTime - (isCommand ? chatPlayer.getLastCommandTime() : chatPlayer.getLastMessageTime());
-			long lastMessageTimePassedGlobal = currentTime - this.lastMessageTime;
-			long remainingTime;
-
-			if (isCommand) {
-				remainingTime = this.commandTime - lastMessageTimePassed;
-			} else if (chatPlayer.isLastMessage(message) && lastMessageTimePassed < this.repeatTime) {
-				remainingTime = this.repeatTime - lastMessageTimePassed;
-			} else if (this.lastMessage.equals(message) && lastMessageTimePassedGlobal < this.repeatTimeGlobal) {
-				remainingTime = this.repeatTimeGlobal - lastMessageTimePassedGlobal;
-			} else {
-				remainingTime = this.normalTime - lastMessageTimePassed;
-			}
-
-			if (remainingTime > 0) {
-				return ((int) (remainingTime / 100F)) / 10F;
-			}
+	public long getRemainingMillis(ChatPlayer chatPlayer, String message) {
+		if (!isEnabled() || message == null) {
+			return 0L;
 		}
 
-		return 0;
+		final long currentTime = System.currentTimeMillis();
+		final boolean isCommand = message.startsWith("/");
+		final long lastMessageTimePassed = currentTime - (isCommand ? chatPlayer.getLastCommandTime() : chatPlayer.getLastMessageTime());
+		final long lastMessageTimePassedGlobal = currentTime - this.lastMessageTime;
+		final long remainingTime;
+
+		if (isCommand) {
+			remainingTime = this.commandTime - lastMessageTimePassed;
+		} else if (chatPlayer.isLastMessage(message) && lastMessageTimePassed < this.repeatTime) {
+			remainingTime = this.repeatTime - lastMessageTimePassed;
+		} else if (this.lastMessage.equals(message) && lastMessageTimePassedGlobal < this.repeatTimeGlobal) {
+			remainingTime = this.repeatTimeGlobal - lastMessageTimePassedGlobal;
+		} else {
+			remainingTime = this.normalTime - lastMessageTimePassed;
+		}
+
+		return Math.max(0L, remainingTime);
+	}
+
+	public float getRemainingTime(ChatPlayer chatPlayer, String message) {
+		final long remainingMillis = getRemainingMillis(chatPlayer, message);
+		if (remainingMillis <= 0L) {
+			return 0.0F;
+		}
+		return ((float) Math.ceil(remainingMillis / 100.0D)) / 10.0F;
 	}
 
 	@Override
 	public ChatEventResult processEvent(ChatPlayer chatPlayer, MessagesModule messagesModule, String playerName,
 			String originalMessage, String lang) {
-		if (isEnabled() && getRemainingTime(chatPlayer, originalMessage) > 0) {
-			return new ChatEventResult(originalMessage, true);
+		final float remainingTime = getRemainingTime(chatPlayer, originalMessage);
+		if (isEnabled() && remainingTime > 0.0F) {
+			final ChatEventResult result = new ChatEventResult(originalMessage, true);
+			result.setNotify(false);
+			result.setPlayerMessage(messagesModule.getCooldownWarnMessage(new String[][] {
+					{ "%cooldown%" },
+					{ formatSeconds(remainingTime) }
+			}, lang));
+			return result;
 		}
 
 		return null;
+	}
+
+	private String formatSeconds(final float seconds) {
+		return String.format(Locale.ROOT, "%.1f", seconds);
 	}
 
 	@Override

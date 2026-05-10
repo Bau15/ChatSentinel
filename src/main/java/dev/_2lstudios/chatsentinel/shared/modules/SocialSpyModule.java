@@ -34,7 +34,7 @@ public final class SocialSpyModule {
     private String stateEnabled = "&aenabled";
     private String stateDisabled = "&cdisabled";
     private String noPermission = "&cYou do not have permission to use this SocialSpy module.";
-    private SocialSpyTrimSettings trimSettings = new SocialSpyTrimSettings(160, 160, 80, 40, 50, "...");
+    private SocialSpyTrimSettings trimSettings = new SocialSpyTrimSettings(160, 160, 80, 40, 50, 80, "...");
     private Map<String, SocialSpyModuleSettings> settingsById = defaultSettings();
     private SocialSpyCommandParser commandParser = new SocialSpyCommandParser(defaultCommandDefinitions(), defaultIgnoredRoots());
 
@@ -212,6 +212,8 @@ public final class SocialSpyModule {
                 "chatsentinel.socialspy.signs", "&8[&dSpy&8] &e%player% &7placed/edited sign at &f%world% %x% %y% %z%&8: &f%content%"));
         result.put(SocialSpyModuleId.BOOKS, new SocialSpyModuleSettings(SocialSpyModuleId.BOOKS, true, true,
                 "chatsentinel.socialspy.books", "&8[&dSpy&8] &e%player% &7wrote a book &f%title%&8: &f%content%"));
+        result.put(SocialSpyModuleId.ANVILS, new SocialSpyModuleSettings(SocialSpyModuleId.ANVILS, true, true,
+                "chatsentinel.socialspy.anvils", "&8[&dSpy&8] &e%player% &7renamed an item&8: &f%old_name% &7-> &f%new_name%"));
         result.put(SocialSpyModuleId.COMMANDS, new SocialSpyModuleSettings(SocialSpyModuleId.COMMANDS, true, false,
                 "chatsentinel.socialspy.commands", "&8[&dSpy&8] &e%player% &7ran command&8: &f/%command%"));
         return result;
@@ -223,8 +225,10 @@ public final class SocialSpyModule {
 
     private static List<String> defaultPatternStrings() {
         final List<String> patterns = new ArrayList<String>();
-        Collections.addAll(patterns, "msg:1:2", "tell:1:2", "w:1:2", "whisper:1:2", "pm:1:2", "m:1:2",
-                "message:1:2", "t:1:2", "reply:-1:1", "r:-1:1");
+        Collections.addAll(patterns,
+                "msg:1:2", "tell:1:2", "w:1:2", "whisper:1:2", "pm:1:2", "m:1:2",
+                "message:1:2", "t:1:2", "dm:1:2", "directmessage:1:2",
+                "reply:-1:1", "r:-1:1", "respond:-1:1");
         return patterns;
     }
 

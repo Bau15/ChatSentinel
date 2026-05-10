@@ -175,8 +175,16 @@ public class MessagesModule {
         return PlaceholderUtil.replacePlaceholders(getString(lang, "delete_list_entry"), placeholders);
     }
 
-public String getDeleteRefresh(String lang) {
+	public String getDeleteRefresh(String lang) {
 		return PlaceholderUtil.replacePlaceholders(getString(lang, "delete_refresh"));
+	}
+
+	public String getDeleteChatUsage(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "deletechat_usage"));
+	}
+
+	public String getRecentChatsUsage(String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "recentchats_usage"));
 	}
 
 	public String getCorrectionWarnMessage(String[][] placeholders, String lang) {
@@ -188,7 +196,11 @@ public String getDeleteRefresh(String lang) {
 	}
 
 	public String getCorrectionDisabled(String lang) {
-		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_disabled"));
+		return getCorrectionDisabled(new String[][] { { "%corrections%", "%original_message%", "%corrected_message%" }, { "", "", "" } }, lang);
+	}
+
+	public String getCorrectionDisabled(String[][] placeholders, String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_disabled"), placeholders);
 	}
 
 	public String getCorrectionUsage(String lang) {
@@ -196,6 +208,18 @@ public String getDeleteRefresh(String lang) {
 	}
 
 	public String getCorrectionConsoleOnly(String lang) {
-		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_console_only"));
+		return getCorrectionConsoleOnly(new String[][] { { "%reason%", "%player%" }, { "", "" } }, lang);
+	}
+
+	public String getCorrectionConsoleOnly(String[][] placeholders, String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "correction_console_only"), placeholders);
+	}
+
+	public String getCooldownWarnMessage(final String[][] placeholders, final String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "cooldown_warn_message"), placeholders);
+	}
+
+	public String getSimilarityWarnMessage(final String[][] placeholders, final String lang) {
+		return PlaceholderUtil.replacePlaceholders(getString(lang, "similarity_warn_message"), placeholders);
 	}
 }

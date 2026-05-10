@@ -42,10 +42,10 @@ public class ChatSentinelCommandServiceTest {
 
         service.execute(actor, new String[] { "clear", "Spamming" });
 
-        assertTrue(normal.messages.get(0).startsWith("\n "));
+        assertTrue(normal.messages.get(0).startsWith(" \n"));
         assertTrue(normal.messages.get(0).contains("Reason: §fSpamming"));
         assertTrue(bypass.messages.get(0).contains("bypass Spamming"));
-        assertTrue(!bypass.messages.get(0).startsWith("\n "));
+        assertTrue(!bypass.messages.get(0).startsWith(" \n"));
     }
 
     @Test
@@ -114,8 +114,46 @@ public class ChatSentinelCommandServiceTest {
 
         assertFalse(normal.messages.get(0).contains("first line"));
         assertTrue(normal.messages.get(0).contains("second line"));
-        assertTrue(bypass.messages.get(0).contains(first.getId()));
-        assertTrue(!bypass.messages.get(0).startsWith("\n "));
+        assertTrue(bypass.messages.get(0).contains("second line"));
+        assertFalse(bypass.messages.get(0).contains("first line"));
+    }
+
+    @Test
+    public void deletechatAlias_replaysSnapshotWithoutDeletedMessage() {
+        TestModuleManager modules = modules();
+        FakeUser normal = new FakeUser(UUID.randomUUID(), "Normal", false);
+        FakeUser bypass = new FakeUser(UUID.randomUUID(), "Bypass", true);
+        ChatSnapshotModule.Entry first = modules.getChatSnapshotModule().record(UUID.randomUUID(), "Steve", "first", "first line", Collections.<UUID>emptyList()).get();
+        modules.getChatSnapshotModule().record(UUID.randomUUID(), "Alex", "second", "second line", Collections.<UUID>emptyList());
+        ChatSentinelCommandService service = service(modules, new FakePlatform(normal, bypass), new FakeConfigStore(), new FakeWriter());
+
+        service.execute(new FakeActor("Admin"), "deletechat", new String[] { first.getId() });
+
+        assertFalse(normal.messages.get(0).contains("first line"));
+        assertTrue(normal.messages.get(0).contains("second line"));
+        assertTrue(bypass.messages.get(0).contains("second line"));
+        assertFalse(bypass.messages.get(0).contains("first line"));
+    }
+
+    @Test
+    public void recentchats_noArgs_respectsHistorySizeNotHardcodedTen() {
+        TestModuleManager modules = modules();
+        int historySize = modules.getChatSnapshotModule().getHistorySize();
+        for (int i = 0; i < historySize + 10; i++) {
+            modules.getChatSnapshotModule().record(UUID.randomUUID(), "Player" + i, "msg" + i, "line" + i, Collections.<UUID>emptyList());
+        }
+        FakeActor actor = new FakeActor("Admin");
+        ChatSentinelCommandService service = service(modules, new FakePlatform(), new FakeConfigStore(), new FakeWriter());
+
+        service.execute(actor, "recentchats", new String[0]);
+
+        int displayedCount = 0;
+        for (String msg : actor.messages) {
+            if (msg.contains("Player")) {
+                displayedCount++;
+            }
+        }
+        assertEquals("recentchats with no args should list up to historySize entries, not hardcoded 10", historySize, displayedCount);
     }
 
     @Test
