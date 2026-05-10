@@ -134,6 +134,13 @@ public final class SocialSpyService {
         return !permittedModules(watcher).isEmpty();
     }
 
+    public void resetAll(final ChatUser watcher) {
+        if (watcher == null) {
+            return;
+        }
+        chatPlayerManager.getPlayer(watcher).clearSocialSpyOverrides();
+    }
+
     private List<String> permittedModules(final ChatUser watcher) {
         final List<String> result = new ArrayList<String>();
         for (String moduleId : moduleManager.getSocialSpyModule().getModuleIds()) {

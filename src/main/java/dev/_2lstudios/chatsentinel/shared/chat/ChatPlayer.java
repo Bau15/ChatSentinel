@@ -1,8 +1,10 @@
 package dev._2lstudios.chatsentinel.shared.chat;
 
 import java.util.ArrayDeque;
+import java.util.ArrayList;
 import java.util.Deque;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 
@@ -13,6 +15,8 @@ public class ChatPlayer {
     private final UUID uuid;
     private final Map<String, Integer> warns;
     private final Deque<String> lastMessages;
+    private final Deque<String> recentMessages;
+    private static final int RECENT_MESSAGE_HISTORY_SIZE = 10;
     private String locale = null;
     private long lastMessageTime;
     private long lastCommandTime;
@@ -32,6 +36,7 @@ public class ChatPlayer {
         this.uuid = uuid;
         this.warns = new HashMap<>();
         this.lastMessages = new ArrayDeque<>(historySize);
+        this.recentMessages = new ArrayDeque<>(RECENT_MESSAGE_HISTORY_SIZE);
         this.lastMessageTime = 0;
         this.lastCommandTime = 0;
     }
@@ -106,12 +111,22 @@ public class ChatPlayer {
         return this.lastCommandTime;
     }
 
-    public synchronized void addLastMessage(String lastMessage, long lastMessageTime) {
+	public synchronized void addLastMessage(String lastMessage, long lastMessageTime) {
         if (lastMessages.size() >= historySize) {
             lastMessages.removeLast();
         }
         lastMessages.offerFirst(removeDigits(lastMessage));
         this.lastMessageTime = lastMessageTime;
+        if (lastMessage != null && !lastMessage.trim().isEmpty()) {
+            while (recentMessages.size() >= RECENT_MESSAGE_HISTORY_SIZE) {
+                recentMessages.removeLast();
+            }
+            recentMessages.offerFirst(lastMessage);
+        }
+    }
+
+    public synchronized List<String> getRecentMessagesSnapshot() {
+        return new ArrayList<String>(recentMessages);
     }
 
     public synchronized void addLastCommand(long lastCommandTime) {

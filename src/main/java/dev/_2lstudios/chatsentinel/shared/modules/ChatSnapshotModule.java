@@ -12,23 +12,46 @@ import java.util.Set;
 import java.util.UUID;
 
 public final class ChatSnapshotModule {
-    public static final int DEFAULT_HISTORY_SIZE = 40;
+    public static final int DEFAULT_HISTORY_SIZE = 50;
     public static final int DEFAULT_CLEAR_LINES = 128;
     public static final String DEFAULT_PROXY_REPLAY_FORMAT = "&7[%player%] &f%message%";
+    public static final boolean DEFAULT_LIVE_DELETE_CLICK_ENABLED = true;
+    public static final String DEFAULT_LIVE_DELETE_PERMISSION = "chatsentinel.delete";
+    public static final String DEFAULT_LIVE_DELETE_PREFIX = "&8[&cX&8] ";
+    public static final String DEFAULT_LIVE_DELETE_HOVER = "&eClick to delete this message.";
+    public static final String DEFAULT_LIVE_DELETE_COMMAND = "/deletechat %id%";
 
     private boolean enabled = true;
     private int historySize = DEFAULT_HISTORY_SIZE;
     private int clearLines = DEFAULT_CLEAR_LINES;
     private String proxyReplayFormat = DEFAULT_PROXY_REPLAY_FORMAT;
+    private boolean liveDeleteClickEnabled = DEFAULT_LIVE_DELETE_CLICK_ENABLED;
+    private String liveDeletePermission = DEFAULT_LIVE_DELETE_PERMISSION;
+    private String liveDeletePrefix = DEFAULT_LIVE_DELETE_PREFIX;
+    private String liveDeleteHover = DEFAULT_LIVE_DELETE_HOVER;
+    private String liveDeleteCommand = DEFAULT_LIVE_DELETE_COMMAND;
     private final Deque<Entry> entries = new ArrayDeque<Entry>(DEFAULT_HISTORY_SIZE);
 
     public synchronized void loadData(boolean enabled, int historySize, int clearLines, String proxyReplayFormat) {
+        loadData(enabled, historySize, clearLines, proxyReplayFormat, DEFAULT_LIVE_DELETE_CLICK_ENABLED,
+                DEFAULT_LIVE_DELETE_PERMISSION, DEFAULT_LIVE_DELETE_PREFIX, DEFAULT_LIVE_DELETE_HOVER,
+                DEFAULT_LIVE_DELETE_COMMAND);
+    }
+
+    public synchronized void loadData(boolean enabled, int historySize, int clearLines, String proxyReplayFormat,
+            boolean liveDeleteClickEnabled, String liveDeletePermission, String liveDeletePrefix, String liveDeleteHover,
+            String liveDeleteCommand) {
         this.enabled = enabled;
         this.historySize = Math.max(1, Math.min(200, historySize));
         this.clearLines = Math.max(1, Math.min(300, clearLines));
         this.proxyReplayFormat = proxyReplayFormat == null || proxyReplayFormat.trim().isEmpty()
                 ? DEFAULT_PROXY_REPLAY_FORMAT
                 : proxyReplayFormat;
+        this.liveDeleteClickEnabled = liveDeleteClickEnabled;
+        this.liveDeletePermission = textOrDefault(liveDeletePermission, DEFAULT_LIVE_DELETE_PERMISSION);
+        this.liveDeletePrefix = textOrDefault(liveDeletePrefix, DEFAULT_LIVE_DELETE_PREFIX);
+        this.liveDeleteHover = textOrDefault(liveDeleteHover, DEFAULT_LIVE_DELETE_HOVER);
+        this.liveDeleteCommand = textOrDefault(liveDeleteCommand, DEFAULT_LIVE_DELETE_COMMAND);
         trimHistory();
     }
 
@@ -105,9 +128,29 @@ public final class ChatSnapshotModule {
         return enabled;
     }
 
+    public boolean isLiveDeleteClickEnabled() {
+        return liveDeleteClickEnabled;
+    }
+
+    public String getLiveDeletePermission() {
+        return liveDeletePermission;
+    }
+
+    public String getLiveDeletePrefix() {
+        return liveDeletePrefix;
+    }
+
+    public String getLiveDeleteHover() {
+        return liveDeleteHover;
+    }
+
+    public String buildLiveDeleteCommand(final String id) {
+        return liveDeleteCommand.replace("%id%", safe(id));
+    }
+
     private void appendBlankLines(StringBuilder builder) {
         for (int i = 0; i < clearLines; i++) {
-            builder.append("\n ");
+            builder.append(" \n");
         }
     }
 
@@ -143,6 +186,10 @@ public final class ChatSnapshotModule {
 
     private static String safe(String value) {
         return value == null ? "" : value;
+    }
+
+    private static String textOrDefault(final String value, final String fallback) {
+        return value == null || value.trim().isEmpty() ? fallback : value;
     }
 
     public static final class Entry {

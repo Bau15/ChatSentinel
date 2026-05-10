@@ -32,7 +32,7 @@ public final class ChatSentinelCommandService {
             "help", "reload", "status", "selftest", "clear", "notify", "spy", "delete",
             "module", "regex", "mutechat", "servermute", "muteall", "muteserver", "autocorrect", "correction", "socialspy", "sspy");
     private static final List<String> ON_OFF_TOGGLE_MODES = Arrays.asList("on", "off", "toggle");
-    private static final List<String> SOCIALSPY_ARGUMENTS = Arrays.asList("status", "messages", "signs", "books", "commands");
+    private static final List<String> SOCIALSPY_ARGUMENTS = Arrays.asList("status", "messages", "signs", "books", "anvils", "commands");
 
     private final ModuleManager moduleManager;
     private final ChatPlayerManager chatPlayerManager;
@@ -69,7 +69,53 @@ public final class ChatSentinelCommandService {
             handleSocialSpy(actor, args, actor.getLocale(), 0);
             return CommandResult.handled();
         }
+        if ("deletechat".equals(normalizedLabel)) {
+            handleDeleteChatAlias(actor, args, actor.getLocale());
+            return CommandResult.handled();
+        }
+        if ("recentchats".equals(normalizedLabel)) {
+            handleRecentChatsAlias(actor, args, actor.getLocale());
+            return CommandResult.handled();
+        }
         return execute(actor, args);
+    }
+
+    private void handleDeleteChatAlias(final CommandActor actor, final String[] args, final String lang) {
+        if (!hasPermission(actor, CommandPermission.DELETE)) {
+            actor.sendMessage(moduleManager.getMessagesModule().getNoPermission(lang));
+            return;
+        }
+        if (args.length != 1) {
+            actor.sendMessage(moduleManager.getMessagesModule().getDeleteChatUsage(lang));
+            return;
+        }
+        deleteSnapshotEntry(actor, args[0], lang);
+    }
+
+    private void handleRecentChatsAlias(final CommandActor actor, final String[] args, final String lang) {
+        if (!hasPermission(actor, CommandPermission.DELETE)) {
+            actor.sendMessage(moduleManager.getMessagesModule().getNoPermission(lang));
+            return;
+        }
+        if (args.length > 1) {
+            actor.sendMessage(moduleManager.getMessagesModule().getRecentChatsUsage(lang));
+            return;
+        }
+        final String[] synthetic = args.length == 0
+                ? new String[] { "delete", "list" }
+                : new String[] { "delete", "list", args[0] };
+        handleDeleteList(actor, synthetic, lang);
+    }
+
+    private void deleteSnapshotEntry(final CommandActor actor, final String id, final String lang) {
+        final ChatSnapshotModule snapshotModule = moduleManager.getChatSnapshotModule();
+        Optional<ChatSnapshotModule.Entry> deleted = snapshotModule.markDeletedEntry(id);
+        if (!deleted.isPresent()) {
+            actor.sendMessage(moduleManager.getMessagesModule().getDeleteUnknown(placeholders(actor.getName(), "", "0", "0", id), lang));
+            return;
+        }
+        platform.replayChatSnapshot(snapshotModule);
+        actor.sendMessage(moduleManager.getMessagesModule().getDeleteDone(placeholders(actor.getName(), "", "0", "0", deleted.get().getId()), lang));
     }
 
     public CommandResult execute(final CommandActor actor, final String[] args) {
@@ -307,34 +353,21 @@ public final class ChatSentinelCommandService {
             actor.sendMessage(moduleManager.getMessagesModule().getDeleteUsage(lang));
             return;
         }
-        Optional<ChatSnapshotModule.Entry> deleted = moduleManager.getChatSnapshotModule().markDeletedEntry(args[1]);
-        if (!deleted.isPresent()) {
-            actor.sendMessage(moduleManager.getMessagesModule().getDeleteUnknown(placeholders(actor.getName(), "", "0", "0", args[1]), lang));
-            return;
-        }
-        for (ChatUser user : platform.getOnlineUsers()) {
-            if (user.hasPermission(CommandPermission.CLEAR_BYPASS)) {
-                user.sendMessage(moduleManager.getMessagesModule().getDeleteBypassNotice(
-                        placeholders(actor.getName(), "", "0", "0", deleted.get().getId()), user.getLocale()));
-            } else {
-                user.sendMessage(moduleManager.getChatSnapshotModule().buildReplayPayload(user.getUniqueId()));
-            }
-        }
-        actor.sendMessage(moduleManager.getMessagesModule().getDeleteDone(placeholders(actor.getName(), "", "0", "0", deleted.get().getId()), lang));
+        deleteSnapshotEntry(actor, args[1], lang);
     }
 
     private void handleDeleteList(final CommandActor actor, final String[] args, final String lang) {
-        int limit = 10;
         if (args.length > 3) {
             actor.sendMessage(moduleManager.getMessagesModule().getDeleteUsage(lang));
             return;
         }
+        final int maxLimit = Math.max(1, moduleManager.getChatSnapshotModule().getHistorySize());
+        int limit = maxLimit;
         if (args.length == 3) {
             try {
-                limit = Math.max(1, Math.min(40, Integer.parseInt(args[2])));
-            } catch (NumberFormatException exception) {
-                actor.sendMessage(moduleManager.getMessagesModule().getDeleteUsage(lang));
-                return;
+                limit = Math.max(1, Math.min(maxLimit, Integer.parseInt(args[2])));
+            } catch (NumberFormatException ignored) {
+                // Keep default history-size limit.
             }
         }
         actor.sendMessage(moduleManager.getMessagesModule().getDeleteListHeader(lang));
@@ -405,6 +438,7 @@ public final class ChatSentinelCommandService {
         if ("whitelist".equals(id)) return moduleManager.getWhitelistModule().isEnabled();
         if ("server-mute".equals(id)) return moduleManager.getServerMuteModule().isEnabled();
         if ("correction".equals(id) || "autocorrect".equals(id)) return moduleManager.getCorrectionModule().isEnabled();
+        if ("similarity".equals(id)) return moduleManager.getSimilarityModule().isEnabled();
         if (id.startsWith("blacklist/")) {
             String submoduleId = id.substring("blacklist/".length());
             if (moduleManager.getBlacklistModule().getSettingsRegistry().moduleIds().contains(submoduleId)) {
@@ -528,6 +562,7 @@ public final class ChatSentinelCommandService {
         if ("allowed-characters".equals(id)) return "allowed-characters.enabled";
         if ("no-move-chat".equals(id)) return "no-move-chat.enabled";
         if ("correction".equals(id) || "autocorrect".equals(id)) return "correction.enabled";
+        if ("similarity".equals(id)) return "similarity.enabled";
         if (id.startsWith("blacklist/")) return "blacklist.modules." + id.substring("blacklist/".length()) + ".enabled";
         if (moduleManager.getBlacklistModule().getSettingsRegistry().moduleIds().contains(id)) return "blacklist.modules." + id + ".enabled";
         return null;

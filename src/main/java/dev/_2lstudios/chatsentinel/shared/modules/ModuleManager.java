@@ -21,6 +21,7 @@ public abstract class ModuleManager {
 	private SocialSpyModule socialSpyModule;
 	private NoMoveChatModule noMoveChatModule;
 	private CorrectionModule correctionModule;
+	private SimilarityModerationModule similarityModule;
 	private FilterCompileReport lastCompileReport;
 	private boolean filterCompileNotifyAdmins = true;
 	private String filterCompileNotifyPermission = "chatsentinel.admin";
@@ -43,6 +44,7 @@ public abstract class ModuleManager {
 		this.serverMuteModule = new ServerMuteModule();
 		this.noMoveChatModule = new NoMoveChatModule();
 		this.correctionModule = new CorrectionModule();
+		this.similarityModule = new SimilarityModerationModule();
 	}
 
 	public CooldownModerationModule getCooldownModule() {
@@ -107,6 +109,10 @@ public abstract class ModuleManager {
 
 	public CorrectionModule getCorrectionModule() {
 		return correctionModule;
+	}
+
+	public SimilarityModerationModule getSimilarityModule() {
+		return similarityModule;
 	}
 
 	public void reloadData() {

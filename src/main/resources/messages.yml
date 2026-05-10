@@ -15,6 +15,9 @@ langs:
     delete_bypass_notice: "&7Chat message %id% was deleted, but you bypassed chat refresh."
     delete_list_header: "&aRecent chat snapshot messages:"
     delete_list_entry: "&7%id% &8| &f%player%&7: %message% &8%status%"
+    delete_refresh: "deleted"
+    deletechat_usage: "&cUsage: /deletechat <id>"
+    recentchats_usage: "&cUsage: /recentchats [limit]"
     reload: "&c&lCS: &aPlugin successfully reloaded!"
     help: |-
       &aChatSentinel commands:
@@ -29,7 +32,7 @@ langs:
     offense_warn_message: "&c&lCS: &cYou cannot write that. If you continue, you will be automatically muted."
     custom_warn_message: "&c&lCS: &cYou cannot write that. If you continue, you will be automatically muted."
     capitalization_warn_message: "&6&lCS: &ePlease avoid excessive capitalization. Your message was corrected."
-    cooldown_warn_message: "&c&lCS: &cWait %cooldown%s before sending another message!"
+    cooldown_warn_message: "&c&lCS: &cYou can write your next message in %cooldown% seconds"
     flood_warn_message: "&c&lCS: &cYou cant send too large messages!"
     syntax_warn_message: "&c&lCS: &cSyntax is disabled in this server!"
     filtered: "&c&lCS: &cYour message was filtered by ChatSentinel! (Characters not allowed)"
@@ -44,6 +47,7 @@ langs:
     correction_disabled: "&cAuto-correction disabled."
     correction_usage: "&cUsage: /autocorrect [on|off|toggle]"
     correction_console_only: "&cOnly players can toggle auto-correction."
+    similarity_warn_message: "&c&lCS: &cStop writing similar messages. Similarity: %similarity%"
   es:
     cleared: "&dGame chat has been cleared by &f%player%&d. Reason: &f%reason%"
     clear_bypass_notice: "&7Chat was cleared by &f%player%&7, but you bypassed clear. Reason: &f%reason%"
@@ -54,6 +58,9 @@ langs:
     delete_bypass_notice: "&7Chat message %id% was deleted, but you bypassed chat refresh."
     delete_list_header: "&aRecent chat snapshot messages:"
     delete_list_entry: "&7%id% &8| &f%player%&7: %message% &8%status%"
+    delete_refresh: "eliminado"
+    deletechat_usage: "&cUso: /deletechat <id>"
+    recentchats_usage: "&cUso: /recentchats [limite]"
     reload: "&c&lCS: &aPlugin recargado correctamente!"
     help: |-
       &aComandos de ChatSentinel:
@@ -68,7 +75,7 @@ langs:
     offense_warn_message: "&c&lCS: &cNo puedes escribir eso. Si continuas, seras muteado automaticamente."
     custom_warn_message: "&c&lCS: &cNo puedes escribir eso. Si continuas, seras muteado automaticamente."
     capitalization_warn_message: "&6&lCS: &eEvita usar mayusculas excesivas. Tu mensaje fue corregido."
-    cooldown_warn_message: "&c&lCS: &cEspera %cooldown%s antes de enviar otro mensaje!"
+    cooldown_warn_message: "&c&lCS: &cEspera %cooldown% segundos antes de enviar tu proximo mensaje!"
     flood_warn_message: "&c&lCS: &cNo puedes enviar mensajes tan largos!"
     syntax_warn_message: "&c&lCS: &cLa sintaxis esta deshabilitada en este servidor!"
     filtered: "&c&lCS: &cTu mensaje fue filtrado por ChatSentinel! (Caracteres no permitidos)"
@@ -83,6 +90,7 @@ langs:
     correction_disabled: "&cAuto-correccion desactivada."
     correction_usage: "&cUso: /autocorrect [on|off|toggle]"
     correction_console_only: "&cSolo los jugadores pueden activar o desactivar la auto-correccion."
+    similarity_warn_message: "&c&lCS: &cDeja de escribir mensajes similares. Similitud: %similarity%"
   pt-br:
     cleared: "&dGame chat has been cleared by &f%player%&d. Reason: &f%reason%"
     clear_bypass_notice: "&7Chat was cleared by &f%player%&7, but you bypassed clear. Reason: &f%reason%"
@@ -93,21 +101,24 @@ langs:
     delete_bypass_notice: "&7Chat message %id% was deleted, but you bypassed chat refresh."
     delete_list_header: "&aRecent chat snapshot messages:"
     delete_list_entry: "&7%id% &8| &f%player%&7: %message% &8%status%"
+    delete_refresh: "eliminado"
+    deletechat_usage: "&cUso: /deletechat <id>"
+    recentchats_usage: "&cUso: /recentchats [limite]"
     reload: "&c&lCS: &aPlugin recarregado com sucesso!"
     help: |-
       &aComandos do ChatSentinel:
       &e/chatsentinel help &7- &bMostra essa mensagem de ajuda!
       &e/chatsentinel reload &7- &bRecarrega o plugin!
-    unknown_command: "&cComando desconhecido. Use /chatsentinel help para ver os comandos disponíveis!"
+    unknown_command: "&cComando desconhecido. Use /chatsentinel help para ver comandos disponíveis!"
     no_permission: "&cVocê não tem permissão para executar este comando!"
     blocked_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuar, sera mutado automaticamente."
-    blacklist_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuar, sera mutado automaticamente."
+    blacklist_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuas, sera mutado automaticamente."
     security_warn_message: "&c&lCS: &cSua mensagem correspondeu a uma regra de segurança."
-    advertising_warn_message: "&c&lCS: &cPublicidade nao e permitida. Se continuar, sera mutado automaticamente."
-    offense_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuar, sera mutado automaticamente."
-    custom_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuar, sera mutado automaticamente."
+    advertising_warn_message: "&c&lCS: &cPublicidade nao e permitida. Se continuas, sera mutado automaticamente."
+    offense_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuas, sera mutado automaticamente."
+    custom_warn_message: "&c&lCS: &cVoce nao pode escrever isso. Se continuas, sera mutado automaticamente."
     capitalization_warn_message: "&6&lCS: &eEvite capitalizacao excessiva na sua mensagem."
-    cooldown_warn_message: "&c&lCS: &cEspere %cooldown%s antes de enviar outra mensagem!"
+    cooldown_warn_message: "&c&lCS: &cEspere %cooldown% segundos antes de enviar sua proxima mensagem!"
     flood_warn_message: "&c&lCS: &cVocê não pode enviar mensagens muito grandes!"
     syntax_warn_message: "&c&lCS: &cA sintaxe está desativada neste servidor!"
     filtered: "&c&lCS: &cSua mensagem foi filtrada pelo ChatSentinel! (Caracteres não permitidos)"
@@ -122,3 +133,4 @@ langs:
     correction_disabled: "&cAuto-correcao desativada."
     correction_usage: "&cUso: /autocorrect [on|off|toggle]"
     correction_console_only: "&cApenas jogadores podem ativar ou desativar a auto-correcao."
+    similarity_warn_message: "&c&lCS: &cPare de escrever mensagens semelhantes. Semelhanca: %similarity%"

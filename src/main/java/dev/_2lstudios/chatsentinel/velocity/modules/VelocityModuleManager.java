@@ -99,6 +99,14 @@ public class VelocityModuleManager extends ModuleManager {
 				configYml.node("cooldown", "time", "repeat").getInt(),
 				configYml.node("cooldown", "time", "normal").getInt(),
 				configYml.node("cooldown", "time", "command").getInt());
+		getSimilarityModule().loadData(configYml.node("similarity", "enabled").getBoolean(true),
+				configYml.node("similarity", "custom-module-name").getString("Similarity"),
+				configYml.node("similarity", "threshold-percentage").getDouble(75.0D),
+				configYml.node("similarity", "compare-last-messages").getInt(3),
+				configYml.node("similarity", "min-normalized-length").getInt(4),
+				configYml.node("similarity", "normalize", "strip-special-characters").getBoolean(true),
+				configYml.node("similarity", "normalize", "strip-accents").getBoolean(true),
+				configYml.node("similarity", "normalize", "collapse-repeated-characters").getBoolean(true));
 		getFloodModule().loadData(configYml.node("flood", "enabled").getBoolean(),
 				configYml.node("flood", "custom-module-name").getString(),
 				configYml.node("flood", "replace").getBoolean(),
@@ -119,7 +127,12 @@ public class VelocityModuleManager extends ModuleManager {
 		getChatSnapshotModule().loadData(configYml.node("chat-snapshot", "enabled").getBoolean(true),
 				configYml.node("chat-snapshot", "history-size").getInt(ChatSnapshotModule.DEFAULT_HISTORY_SIZE),
 				configYml.node("chat-snapshot", "clear-lines").getInt(ChatSnapshotModule.DEFAULT_CLEAR_LINES),
-				configYml.node("chat-snapshot", "proxy-replay-format").getString(ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT));
+				configYml.node("chat-snapshot", "proxy-replay-format").getString(ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT),
+				configYml.node("chat-snapshot", "live-delete-click", "enabled").getBoolean(ChatSnapshotModule.DEFAULT_LIVE_DELETE_CLICK_ENABLED),
+				configYml.node("chat-snapshot", "live-delete-click", "permission").getString(ChatSnapshotModule.DEFAULT_LIVE_DELETE_PERMISSION),
+				configYml.node("chat-snapshot", "live-delete-click", "prefix").getString(ChatSnapshotModule.DEFAULT_LIVE_DELETE_PREFIX),
+				configYml.node("chat-snapshot", "live-delete-click", "hover").getString(ChatSnapshotModule.DEFAULT_LIVE_DELETE_HOVER),
+				configYml.node("chat-snapshot", "live-delete-click", "command").getString(ChatSnapshotModule.DEFAULT_LIVE_DELETE_COMMAND));
 		getGeneralModule().loadData(configYml.node("general", "sanitize").getBoolean(true),
 				configYml.node("general", "sanitize-names").getBoolean(true),
 				configYml.node("general", "filter-other").getBoolean(false),
@@ -342,6 +355,7 @@ public class VelocityModuleManager extends ModuleManager {
 						configYml.node("social-spy", "trim", "sign-line-chars").getInt(80),
 						configYml.node("social-spy", "trim", "book-title-chars").getInt(40),
 						configYml.node("social-spy", "trim", "book-content-chars").getInt(50),
+						configYml.node("social-spy", "trim", "anvil-name-chars").getInt(80),
 						configYml.node("social-spy", "trim", "append-ellipsis").getString("...")),
 				readSocialSpyModuleSettings(configYml),
 				readStringList(configYml.node("social-spy", "message-command-patterns")),
@@ -353,6 +367,7 @@ public class VelocityModuleManager extends ModuleManager {
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.MESSAGES, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.SIGNS, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.BOOKS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.ANVILS, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.COMMANDS, false);
 		return result;
 	}

@@ -116,6 +116,14 @@ public class BukkitModuleManager extends ModuleManager {
 		getCooldownModule().loadData(configYml.getBoolean("cooldown.enabled"),
 				configYml.getInt("cooldown.time.repeat-global"), configYml.getInt("cooldown.time.repeat"),
 				configYml.getInt("cooldown.time.normal"), configYml.getInt("cooldown.time.command"));
+		getSimilarityModule().loadData(configYml.getBoolean("similarity.enabled", true),
+				configYml.getString("similarity.custom-module-name", "Similarity"),
+				configYml.getDouble("similarity.threshold-percentage", 75.0D),
+				configYml.getInt("similarity.compare-last-messages", 3),
+				configYml.getInt("similarity.min-normalized-length", 4),
+				configYml.getBoolean("similarity.normalize.strip-special-characters", true),
+				configYml.getBoolean("similarity.normalize.strip-accents", true),
+				configYml.getBoolean("similarity.normalize.collapse-repeated-characters", true));
 		getFloodModule().loadData(configYml.getBoolean("flood.enabled"), configYml.getString("flood.custom-module-name"), configYml.getBoolean("flood.replace"),
 				configYml.getInt("flood.warn.max"), configYml.getString("flood.pattern"),
 				configYml.getString("flood.warn.notification"),
@@ -132,7 +140,12 @@ public class BukkitModuleManager extends ModuleManager {
 		getChatSnapshotModule().loadData(configYml.getBoolean("chat-snapshot.enabled", true),
 				configYml.getInt("chat-snapshot.history-size", ChatSnapshotModule.DEFAULT_HISTORY_SIZE),
 				configYml.getInt("chat-snapshot.clear-lines", ChatSnapshotModule.DEFAULT_CLEAR_LINES),
-				configYml.getString("chat-snapshot.proxy-replay-format", ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT));
+				configYml.getString("chat-snapshot.proxy-replay-format", ChatSnapshotModule.DEFAULT_PROXY_REPLAY_FORMAT),
+				configYml.getBoolean("chat-snapshot.live-delete-click.enabled", ChatSnapshotModule.DEFAULT_LIVE_DELETE_CLICK_ENABLED),
+				configYml.getString("chat-snapshot.live-delete-click.permission", ChatSnapshotModule.DEFAULT_LIVE_DELETE_PERMISSION),
+				configYml.getString("chat-snapshot.live-delete-click.prefix", ChatSnapshotModule.DEFAULT_LIVE_DELETE_PREFIX),
+				configYml.getString("chat-snapshot.live-delete-click.hover", ChatSnapshotModule.DEFAULT_LIVE_DELETE_HOVER),
+				configYml.getString("chat-snapshot.live-delete-click.command", ChatSnapshotModule.DEFAULT_LIVE_DELETE_COMMAND));
 		getGeneralModule().loadData(configYml.getBoolean("general.sanitize", true),
 				configYml.getBoolean("general.sanitize-names", true),
 				configYml.getBoolean("general.filter-other", false),
@@ -287,6 +300,7 @@ public class BukkitModuleManager extends ModuleManager {
 						configYml.getInt("social-spy.trim.sign-line-chars", 80),
 						configYml.getInt("social-spy.trim.book-title-chars", 40),
 						configYml.getInt("social-spy.trim.book-content-chars", 50),
+						configYml.getInt("social-spy.trim.anvil-name-chars", 80),
 						configYml.getString("social-spy.trim.append-ellipsis", "...")),
 				readSocialSpyModuleSettings(configYml),
 				configYml.getStringList("social-spy.message-command-patterns"),
@@ -298,6 +312,7 @@ public class BukkitModuleManager extends ModuleManager {
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.MESSAGES, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.SIGNS, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.BOOKS, true);
+		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.ANVILS, true);
 		addSocialSpyModuleSettings(result, configYml, SocialSpyModuleId.COMMANDS, false);
 		return result;
 	}

@@ -64,6 +64,7 @@ public final class ChatEventProcessor {
                 moduleManager.getAllowedCharactersModule(),
                 moduleManager.getCapitalizationModule(),
                 moduleManager.getCooldownModule(),
+                moduleManager.getSimilarityModule(),
                 moduleManager.getFloodModule(),
                 moduleManager.getBlacklistModule()
         };
@@ -90,6 +91,7 @@ public final class ChatEventProcessor {
                     finalResult.setHide(true);
                 }
                 if (result.isCancelled()) {
+                    handleViolation(user, chatPlayer, moderationModule, originalMessage, message, result);
                     finalResult.setCancelled(true);
                     break;
                 }
@@ -222,9 +224,14 @@ public final class ChatEventProcessor {
                 data.customModuleName, data.maxWarns, data.sourceFile, data.sourceModule, data.matchedText, result.getMessage());
         final String warnMessage = moduleManager.getMessagesModule().getWarnMessage(placeholders, chatPlayer.getLocale(), moderationModule.getName());
         if (result.isCancelled() || result.isHide()) {
-            final String blockedMessage = moduleManager.getMessagesModule().getBlockedMessage(placeholders, chatPlayer.getLocale());
-            if (blockedMessage != null && !blockedMessage.isEmpty()) {
-                user.sendMessage(blockedMessage);
+            final String playerMessage = result.getPlayerMessage().orElseGet(new java.util.function.Supplier<String>() {
+                @Override
+                public String get() {
+                    return moduleManager.getMessagesModule().getBlockedMessage(placeholders, chatPlayer.getLocale());
+                }
+            });
+            if (playerMessage != null && !playerMessage.isEmpty()) {
+                user.sendMessage(playerMessage);
             }
         } else if (warnMessage != null && !warnMessage.isEmpty()) {
             user.sendWarning(warnMessage, moduleManager.getWarningDeliverySettings());

@@ -54,6 +54,7 @@ social-spy:
     sign-line-chars: 80
     book-title-chars: 40
     book-content-chars: 50
+    anvil-name-chars: 80
     append-ellipsis: "..."
 
   modules:
@@ -72,6 +73,11 @@ social-spy:
       default-enabled: true
       permission: "chatsentinel.socialspy.books"
       format: "&8[&dSpy&8] &e%player% &7wrote a book &f%title%&8: &f%content%"
+    anvils:
+      enabled: true
+      default-enabled: true
+      permission: "chatsentinel.socialspy.anvils"
+      format: "&8[&dSpy&8] &e%player% &7renamed an item&8: &f%old_name% &7-> &f%new_name%"
     commands:
       enabled: true
       default-enabled: false
@@ -92,6 +98,9 @@ social-spy:
     - "t:1:2"
     - "reply:-1:1"
     - "r:-1:1"
+    - "dm:1:2"
+    - "directmessage:1:2"
+    - "respond:-1:1"
 
   # Never spy sensitive authentication/password commands by default.
   ignored-command-roots:
@@ -130,9 +139,15 @@ no-move-chat:
 # Bukkit uses event chat format when available. BungeeCord/Velocity use proxy-replay-format.
 chat-snapshot:
   enabled: true
-  history-size: 40
+  history-size: 50
   clear-lines: 128
   proxy-replay-format: "&7[%player%] &f%message%"
+  live-delete-click:
+    enabled: true
+    permission: "chatsentinel.delete"
+    prefix: "&8[&cX&8] "
+    hover: "&eClick to delete this message."
+    command: "/deletechat %id%"
 
 general:
   # If enabled, other checks will ignore non-latin characters to improve detection.
@@ -412,6 +427,18 @@ cooldown:
     repeat: 10000
     normal: 1000
     command: 400
+
+# Checks if the player is sending repeated similar messages.
+similarity:
+  enabled: true
+  custom-module-name: "Similarity"
+  threshold-percentage: 75.0
+  compare-last-messages: 3
+  min-normalized-length: 4
+  normalize:
+    strip-special-characters: true
+    strip-accents: true
+    collapse-repeated-characters: true
 
 # Checks if player is using too many repeated characters.
 flood:

@@ -18,6 +18,8 @@ commands:
       - muteserver
       - socialspy
       - sspy
+      - deletechat
+      - recentchats
 
 permissions:
   chatsentinel.admin:
@@ -37,6 +39,7 @@ permissions:
       chatsentinel.socialspy.messages: true
       chatsentinel.socialspy.signs: true
       chatsentinel.socialspy.books: true
+      chatsentinel.socialspy.anvils: true
       chatsentinel.socialspy.commands: true
   chatsentinel.mute.bypass:
     description: "Allows chatting while server mute is active."
@@ -70,6 +73,9 @@ permissions:
     default: op
   chatsentinel.socialspy.books:
     description: "Receive SocialSpy book notifications."
+    default: op
+  chatsentinel.socialspy.anvils:
+    description: "Receive SocialSpy anvil rename notifications."
     default: op
   chatsentinel.socialspy.commands:
     description: "Receive SocialSpy general command notifications."

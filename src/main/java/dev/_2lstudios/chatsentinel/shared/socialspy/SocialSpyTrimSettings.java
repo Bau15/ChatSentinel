@@ -8,15 +8,17 @@ public final class SocialSpyTrimSettings {
     private final int signLineChars;
     private final int bookTitleChars;
     private final int bookContentChars;
+    private final int anvilNameChars;
     private final String appendEllipsis;
 
     public SocialSpyTrimSettings(final int commandContentChars, final int messageContentChars, final int signLineChars,
-            final int bookTitleChars, final int bookContentChars, final String appendEllipsis) {
+            final int bookTitleChars, final int bookContentChars, final int anvilNameChars, final String appendEllipsis) {
         this.commandContentChars = clamp(commandContentChars);
         this.messageContentChars = clamp(messageContentChars);
         this.signLineChars = clamp(signLineChars);
         this.bookTitleChars = clamp(bookTitleChars);
         this.bookContentChars = clamp(bookContentChars);
+        this.anvilNameChars = clamp(anvilNameChars);
         this.appendEllipsis = appendEllipsis == null || appendEllipsis.isEmpty() ? "..." : appendEllipsis;
     }
 
@@ -38,6 +40,10 @@ public final class SocialSpyTrimSettings {
 
     public int getBookContentChars() {
         return bookContentChars;
+    }
+
+    public int getAnvilNameChars() {
+        return anvilNameChars;
     }
 
     public String getAppendEllipsis() {

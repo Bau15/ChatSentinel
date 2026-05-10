@@ -9,9 +9,10 @@ public final class SocialSpyModuleId {
     public static final String MESSAGES = "messages";
     public static final String SIGNS = "signs";
     public static final String BOOKS = "books";
+    public static final String ANVILS = "anvils";
     public static final String COMMANDS = "commands";
 
-    private static final List<String> IDS = Collections.unmodifiableList(Arrays.asList(MESSAGES, SIGNS, BOOKS, COMMANDS));
+    private static final List<String> IDS = Collections.unmodifiableList(Arrays.asList(MESSAGES, SIGNS, BOOKS, ANVILS, COMMANDS));
 
     private SocialSpyModuleId() {
     }
@@ -31,6 +32,9 @@ public final class SocialSpyModuleId {
         }
         if ("book".equals(id)) {
             return BOOKS;
+        }
+        if ("anvil".equals(id) || "rename".equals(id) || "renames".equals(id)) {
+            return ANVILS;
         }
         if ("command".equals(id) || "cmd".equals(id) || "cmds".equals(id)) {
             return COMMANDS;

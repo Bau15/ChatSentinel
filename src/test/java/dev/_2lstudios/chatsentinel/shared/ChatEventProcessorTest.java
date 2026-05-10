@@ -160,6 +160,30 @@ public class ChatEventProcessorTest {
     }
 
     @Test
+    public void process_sendsCooldownWarnMessage_notBlockedMessage_whenCooldownCancels() {
+        TestModuleManager modules = modules();
+        Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
+        Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "You cannot write that. If you continue, you will be automatically muted.");
+        en.put("cooldown_warn_message", "You can write your next message in %cooldown% seconds");
+        en.put("filtered", "filtered");
+        locales.put("en", en);
+        modules.getMessagesModule().loadData("en", locales);
+        modules.getCooldownModule().loadData(true, 0, 0, 5000, 0);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatPlayerManager players = new ChatPlayerManager();
+        ChatPlayer chatPlayer = players.getPlayer(user);
+        chatPlayer.addLastMessage("hello", System.currentTimeMillis() - 1000L);
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), players);
+
+        ProcessedChatEvent result = processor.process(user, "hello", true);
+
+        assertTrue(result.isCancelled());
+        assertTrue(user.getMessages().stream().anyMatch(m -> m.contains("You can write your next message in")));
+        assertTrue(user.getMessages().stream().noneMatch(m -> m.contains("You cannot write that")));
+    }
+
+    @Test
     public void process_skipsCapitalization_whenGlobalBypassPresent() {
         TestModuleManager modules = modules();
         modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "chatsentinel.bypass",
