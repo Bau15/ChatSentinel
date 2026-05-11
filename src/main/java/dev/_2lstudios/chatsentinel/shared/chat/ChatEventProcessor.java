@@ -368,9 +368,10 @@ public final class ChatEventProcessor {
             final String message, final String identityKey, final String customModuleName, final int maxWarns,
             final String sourceFile, final String sourceModule, final String matchedText, final String resultMessage) {
         final float remainingTime = moduleManager.getCooldownModule().getRemainingTime(chatPlayer, message);
+        final String safeMatchedText = matchedText == null ? "" : matchedText;
         return new String[][] {
-                { "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%", "%server_name%", "%module_id%", "%source_file%", "%source_module%", "%matched_text%", "%result_message%" },
-                { user.getName(), customModuleName, message, String.valueOf(chatPlayer.getWarns(identityKey)), String.valueOf(maxWarns), String.valueOf(remainingTime), user.getServerName(), identityKey, sourceFile, sourceModule, matchedText, resultMessage }
+                { "%player%", "%module%", "%message%", "%warns%", "%maxwarns%", "%cooldown%", "%server_name%", "%module_id%", "%source_file%", "%source_module%", "%matched_text%", "%word%", "%result_message%" },
+                { user.getName(), customModuleName, message, String.valueOf(chatPlayer.getWarns(identityKey)), String.valueOf(maxWarns), String.valueOf(remainingTime), user.getServerName(), identityKey, sourceFile, sourceModule, safeMatchedText, safeMatchedText, resultMessage }
         };
     }
 

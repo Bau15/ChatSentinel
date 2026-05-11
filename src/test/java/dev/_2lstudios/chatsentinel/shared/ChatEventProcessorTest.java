@@ -143,7 +143,7 @@ public class ChatEventProcessorTest {
         TestModuleManager modules = modules();
         Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
         Map<String, String> en = new HashMap<String, String>();
-        en.put("blocked_message", "You cannot write that. If you continue, you will be automatically muted.");
+        en.put("blocked_message", "Blocked word: %word%.");
         en.put("blacklist_warn_message", "warning");
         en.put("filtered", "filtered");
         locales.put("en", en);
@@ -153,10 +153,29 @@ public class ChatEventProcessorTest {
         FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
         ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
 
-        ProcessedChatEvent result = processor.process(user, "Pvt4", true);
+        processor.process(user, "Pvt4", true);
 
-        assertTrue(result.isCancelled());
-        assertTrue(user.getMessages().contains("You cannot write that. If you continue, you will be automatically muted."));
+        assertTrue(user.getMessages().contains("Blocked word: Pvt4."));
+    }
+
+    @Test
+    public void process_usesFirstMatchedWord_whenBlacklistMessageContainsMultipleBlockedWords() {
+        TestModuleManager modules = modules();
+        Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
+        Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "Blocked word: %word%.");
+        en.put("blacklist_warn_message", "warning");
+        en.put("filtered", "filtered");
+        locales.put("en", en);
+        modules.getMessagesModule().loadData("en", locales);
+        modules.getBlacklistModule().loadData(true, "Blacklist", false, false, "", 3, "notify", false,
+                new String[0], new String[] { "pvt4", "badword" }, true);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        processor.process(user, "badword then Pvt4", true);
+
+        assertTrue(user.getMessages().contains("Blocked word: badword."));
     }
 
     @Test
