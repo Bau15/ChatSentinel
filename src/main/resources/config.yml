@@ -432,7 +432,7 @@ cooldown:
 similarity:
   enabled: true
   custom-module-name: "Similarity"
-  threshold-percentage: 75.0
+  threshold-percentage: 50.0
   compare-last-messages: 3
   min-normalized-length: 4
   normalize:
