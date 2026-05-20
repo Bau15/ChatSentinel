@@ -90,9 +90,11 @@ public final class ChatEventProcessor {
                 if (result.isHide()) {
                     finalResult.setHide(true);
                 }
-                if (result.isCancelled()) {
+                if (isTerminalCancellation(result)) {
                     handleViolation(user, chatPlayer, moderationModule, originalMessage, message, result);
-                    finalResult.setCancelled(true);
+                    if (result.isCancelled()) {
+                        finalResult.setCancelled(true);
+                    }
                     break;
                 }
                 continue;
@@ -103,9 +105,14 @@ public final class ChatEventProcessor {
                         moderationModule.getIdentityKey(), moderationModule.getCustomName(), moderationModule.getMaxWarns(),
                         "", moderationModule.getName(), "", result.getMessage()));
                 finalResult.setMessage(result.getMessage());
-                if (result.isCancelled()) {
-                    user.sendMessage(messagesModule.getFiltered(lang));
-                    finalResult.setCancelled(true);
+                if (result.isHide()) {
+                    finalResult.setHide(true);
+                }
+                if (isTerminalCancellation(result)) {
+                    if (result.isCancelled()) {
+                        user.sendMessage(messagesModule.getFiltered(lang));
+                        finalResult.setCancelled(true);
+                    }
                     break;
                 }
                 continue;
@@ -116,13 +123,19 @@ public final class ChatEventProcessor {
             if (result.isHide()) {
                 finalResult.setHide(true);
             }
-            if (result.isCancelled()) {
-                finalResult.setCancelled(true);
+            if (isTerminalCancellation(result)) {
+                if (result.isCancelled()) {
+                    finalResult.setCancelled(true);
+                }
                 break;
             }
         }
 
         return new ProcessedChatEvent(finalResult.getMessage(), finalResult.isCancelled(), finalResult.isHide());
+    }
+
+    private boolean isTerminalCancellation(final ChatEventResult result) {
+        return result != null && (result.isCancelled() || result.isHide());
     }
 
     private boolean isServerMuted(final ChatUser user, final ChatPlayer chatPlayer, final MessagesModule messagesModule,

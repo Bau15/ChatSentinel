@@ -2,14 +2,20 @@ package dev._2lstudios.chatsentinel.shared;
 
 import dev._2lstudios.chatsentinel.shared.alerts.LocalAlertBus;
 import dev._2lstudios.chatsentinel.shared.chat.ChatEventProcessor;
+import dev._2lstudios.chatsentinel.shared.chat.ChatEventResult;
 import dev._2lstudios.chatsentinel.shared.chat.ChatNotificationManager;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayer;
 import dev._2lstudios.chatsentinel.shared.chat.ChatPlayerManager;
 import dev._2lstudios.chatsentinel.shared.chat.ProcessedChatEvent;
 import dev._2lstudios.chatsentinel.shared.commands.CommandResult;
 import dev._2lstudios.chatsentinel.shared.filter.FilterCompileStatus;
+import dev._2lstudios.chatsentinel.shared.modules.AllowedCharactersModule;
+import dev._2lstudios.chatsentinel.shared.modules.CooldownModerationModule;
+import dev._2lstudios.chatsentinel.shared.modules.FloodModerationModule;
 import dev._2lstudios.chatsentinel.shared.modules.GeneralModule;
+import dev._2lstudios.chatsentinel.shared.modules.MessagesModule;
 import dev._2lstudios.chatsentinel.shared.modules.ModuleManager;
+import dev._2lstudios.chatsentinel.shared.modules.SimilarityModerationModule;
 import dev._2lstudios.chatsentinel.shared.platform.ChatPlatform;
 import dev._2lstudios.chatsentinel.shared.platform.ChatUser;
 import dev._2lstudios.chatsentinel.shared.text.WarningDeliverySettings;
@@ -203,6 +209,69 @@ public class ChatEventProcessorTest {
     }
 
     @Test
+    public void process_doesNotRunFlood_whenCooldownReturnsHiddenTerminalResult() {
+        TestModuleManager modules = modules();
+        TrackingFloodModule floodModule = new TrackingFloodModule();
+        modules.setCooldownOverride(new HiddenCooldownModule());
+        modules.setFloodOverride(floodModule);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), new ChatPlayerManager());
+
+        processor.process(user, "hello", true);
+
+        assertFalse(floodModule.wasCalled());
+    }
+
+    @Test
+    public void process_sendsOnlyCooldownWarning_whenSimilarityWouldAlsoCancel() {
+        TestModuleManager modules = modules();
+        Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
+        Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "blocked");
+        en.put("cooldown_warn_message", "cooldown");
+        en.put("similarity_warn_message", "similarity");
+        en.put("filtered", "filtered");
+        locales.put("en", en);
+        modules.getMessagesModule().loadData("en", locales);
+        modules.getCooldownModule().loadData(true, 0, 0, 5000, 0);
+        modules.getSimilarityModule().loadData(true, "Similarity", 75.0D, 3, 4, true, true, true);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatPlayerManager players = new ChatPlayerManager();
+        ChatPlayer chatPlayer = players.getPlayer(user);
+        chatPlayer.addLastMessage("spam", System.currentTimeMillis() - 1L);
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), players);
+
+        processor.process(user, "spaaam", true);
+
+        assertEquals(Collections.singletonList("cooldown"), user.getMessages());
+    }
+
+    @Test
+    public void process_allowsReplacementToContinueIntoSimilarity() {
+        TestModuleManager modules = modules();
+        Map<String, Map<String, String>> locales = new HashMap<String, Map<String, String>>();
+        Map<String, String> en = new HashMap<String, String>();
+        en.put("blocked_message", "blocked");
+        en.put("similarity_warn_message", "similarity");
+        en.put("filtered", "filtered");
+        locales.put("en", en);
+        modules.getMessagesModule().loadData("en", locales);
+        modules.getAllowedCharactersModule().loadData(true,
+                AllowedCharactersModule.DEFAULT_MODE,
+                "[A-Za-z ]+", "");
+        modules.getSimilarityModule().loadData(true, "Similarity", 75.0D, 3, 4, true, true, true);
+        FakeUser user = new FakeUser(UUID.randomUUID(), "Steve");
+        ChatPlayerManager players = new ChatPlayerManager();
+        ChatPlayer chatPlayer = players.getPlayer(user);
+        chatPlayer.addLastMessage("spam", System.currentTimeMillis() - 10000L);
+        ChatEventProcessor processor = processor(modules, new FakePlatform("Bukkit", Collections.singletonList(user)), players);
+
+        ProcessedChatEvent result = processor.process(user, "sp am", true);
+
+        assertTrue(result.isCancelled());
+    }
+
+    @Test
     public void process_skipsCapitalization_whenGlobalBypassPresent() {
         TestModuleManager modules = modules();
         modules.getGeneralModule().loadData(false, false, false, Collections.<String>emptyList(), "chatsentinel.bypass",
@@ -279,8 +348,52 @@ public class ChatEventProcessorTest {
     }
 
     private static final class TestModuleManager extends ModuleManager {
+        private CooldownModerationModule cooldownOverride;
+        private FloodModerationModule floodOverride;
+
+        @Override
+        public CooldownModerationModule getCooldownModule() {
+            return cooldownOverride == null ? super.getCooldownModule() : cooldownOverride;
+        }
+
+        @Override
+        public FloodModerationModule getFloodModule() {
+            return floodOverride == null ? super.getFloodModule() : floodOverride;
+        }
+
+        private void setCooldownOverride(final CooldownModerationModule cooldownOverride) {
+            this.cooldownOverride = cooldownOverride;
+        }
+
+        private void setFloodOverride(final FloodModerationModule floodOverride) {
+            this.floodOverride = floodOverride;
+        }
+
         @Override
         public void reloadData(FilterCompileStatus status) {
+        }
+    }
+
+    private static final class HiddenCooldownModule extends CooldownModerationModule {
+        @Override
+        public ChatEventResult processEvent(final ChatPlayer chatPlayer, final MessagesModule messagesModule,
+                final String playerName, final String originalMessage, final String lang) {
+            return new ChatEventResult(originalMessage, false, true);
+        }
+    }
+
+    private static final class TrackingFloodModule extends FloodModerationModule {
+        private boolean called;
+
+        @Override
+        public ChatEventResult processEvent(final ChatPlayer chatPlayer, final MessagesModule messagesModule,
+                final String playerName, final String message, final String lang) {
+            this.called = true;
+            return null;
+        }
+
+        private boolean wasCalled() {
+            return called;
         }
     }
 
