@@ -4,6 +4,12 @@ author: ${author}
 version: ${version}
 url: ${url}
 main: dev._2lstudios.chatsentinel.bukkit.ChatSentinel
+depend:
+  - packetevents
+softdepend:
+  - Essentials
+  - EssentialsLite
+  - ZelChat
 api: "1.13"
 api-version: "1.13"
 folia-supported: true
