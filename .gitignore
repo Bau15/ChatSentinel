@@ -11,3 +11,9 @@ dependency-reduced-pom.xml
 # OS
 .DS_Store
 Thumbs.db
+
+.factorypath
+.classpath
+.project
+
+.settings
